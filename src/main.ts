@@ -113,8 +113,13 @@ extended.innerHTML = `
 const mainHeader = Object.assign(document.createElement("div"), {
   className: "panel-header",
   innerHTML: `
-    <div class="brand-lockup"><span class="island-mascot" aria-hidden="true"><i></i><i></i></span><div><div class="eyebrow">Island</div><h1 class="panel-title">Vue principale</h1></div></div>
-    <button class="panel-close" type="button" aria-label="Réduire">−</button>
+    <div class="brand-lockup"><div class="mascot-mini" aria-hidden="true"><span class="mascot-body"><i></i><i></i></span></div><div><div class="eyebrow">Island</div><h1 class="panel-title">Accueil</h1></div></div>
+    <div class="header-right"><nav class="page-tabs" aria-label="Pages">
+      <button class="page-tab active" data-page-target="overview" type="button" aria-label="Accueil">⌂</button>
+      <button class="page-tab" data-page-target="notifications" type="button" aria-label="Alertes">●</button>
+      <button class="page-tab" data-page-target="pomodoro" type="button" aria-label="Pomodoro">◷</button>
+      <button class="page-tab" data-page-target="clipboard" type="button" aria-label="Presse-papier">▣</button>
+    </nav><button class="panel-close" type="button" aria-label="Réduire">−</button></div>
   `
 });
 const extendedHeader = Object.assign(document.createElement("div"), {
@@ -131,7 +136,9 @@ mainView.innerHTML = `
   <div class="main-content">
     <article class="module-card media-card">
       <div class="welcome-row">
-        <div class="mascot-stage" aria-hidden="true"><span class="island-mascot large"><i></i><i></i></span><b></b></div>
+        <div class="mascot-stage" aria-hidden="true">
+          <span class="mascot-figure"><span class="mascot-antenna"></span><span class="mascot-arm left"></span><span class="mascot-arm right"></span><span class="mascot-body"><i></i><i></i></span><span class="mascot-foot left"></span><span class="mascot-foot right"></span></span>
+        </div>
         <div><div class="module-label">Bonjour</div><div class="media-meta">Votre île est prête</div><div class="media-artist">Survolez, puis choisissez une action</div></div>
       </div>
       <div class="now-playing"><div class="module-label">Lecture en cours</div><div class="media-meta">Aucune lecture</div><div class="media-artist">Aucun lecteur actif</div></div>
@@ -149,12 +156,14 @@ mainView.innerHTML = `
       <div><div class="module-row"><span class="module-label">Luminosité</span><span class="module-value">—</span></div><div class="fake-slider" aria-hidden="true"></div></div>
     </article>
   </div>
-  <footer class="panel-footer"><span>Modules en préparation</span><button class="expand-button" data-open-pages type="button">Ouvrir les pages</button></footer>
+  <footer class="panel-footer"><span>Une île discrète, toujours disponible</span><span class="footer-hint">Cliquez sur une page</span></footer>
 `;
 panelShell.replaceChildren(mainHeader, mainView, extendedHeader, extended);
 panelShell.querySelectorAll(".panel-close").forEach((button) => button.addEventListener("click", closePanel));
-panelShell.querySelectorAll<HTMLButtonElement>("[data-open-pages]").forEach((button) => button.addEventListener("click", () => setExtended(true)));
-extendedHeader.querySelector(".panel-back")?.addEventListener("click", () => setExtended(false));
+panelShell.querySelectorAll<HTMLButtonElement>("[data-page-target]").forEach((button) => {
+  button.addEventListener("click", () => setPage(button.dataset.pageTarget as PageId));
+});
+extendedHeader.querySelector(".panel-back")?.addEventListener("click", () => setPage("overview"));
 
 const mediaTitle = mainView.querySelector<HTMLElement>(".now-playing .media-meta");
 const mediaArtist = mainView.querySelector<HTMLElement>(".now-playing .media-artist");
@@ -218,6 +227,21 @@ if (volumeSlider && volumeValue) {
   }
 }
 
+type PageId = "overview" | TabId;
+let currentPage: PageId = "overview";
+
+function setPage(page: PageId) {
+  currentPage = page;
+  setExtended(page !== "overview");
+  panelShell.querySelectorAll<HTMLButtonElement>("[data-page-target]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.pageTarget === page);
+  });
+  const title = extendedHeader.querySelector<HTMLElement>(".extended-title");
+  if (title && page !== "overview") {
+    title.textContent = page === "pomodoro" ? "Pomodoro" : page === "clipboard" ? "Presse-papier" : "Alertes";
+  }
+}
+
 function setExtended(value: boolean) {
   panel.classList.toggle("extended", value);
   mainView.hidden = value;
@@ -239,6 +263,7 @@ function setExtended(value: boolean) {
 }
 
 function selectTab(tab: TabId) {
+  setPage(tab);
   panelShell.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((button) => {
     button.classList.toggle("active", button.dataset.tab === tab);
   });
@@ -339,7 +364,7 @@ function closePanel() {
   openTimer = undefined;
   if (!open) return;
   open = false;
-  setExtended(false);
+  setPage("overview");
   panel.classList.remove("open");
   panel.setAttribute("aria-hidden", "true");
   void setOpen(false);

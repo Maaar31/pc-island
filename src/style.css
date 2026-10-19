@@ -123,6 +123,64 @@ body,
   gap: 9px;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-tabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.page-tab {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #7f849c;
+  background: transparent;
+  cursor: pointer;
+  font: 600 14px/1 "Segoe UI Symbol", "Segoe UI", sans-serif;
+  transition: color 140ms ease-out, background 140ms ease-out, transform 100ms ease-out;
+}
+
+.page-tab:hover {
+  color: #cdd6f4;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.page-tab.active {
+  color: #11111b;
+  background: #f5c2e7;
+  box-shadow: 0 2px 8px rgba(245, 194, 231, 0.25);
+}
+
+.page-tab:active {
+  transform: scale(0.88);
+}
+
+.mascot-mini {
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+
+.mascot-mini .mascot-body {
+  width: 27px;
+  height: 27px;
+  border-radius: 10px;
+}
+
 .island-mascot {
   position: relative;
   display: inline-flex;
@@ -136,6 +194,146 @@ body,
   background: linear-gradient(145deg, #f5c2e7, #cba6f7);
   box-shadow: 0 5px 14px rgba(203, 166, 247, 0.24);
   transform: rotate(-5deg);
+}
+
+.mascot-figure {
+  position: relative;
+  display: block;
+  width: 94px;
+  height: 105px;
+  animation: mascot-float 3s ease-in-out infinite;
+}
+
+.mascot-body {
+  position: absolute;
+  right: 8px;
+  bottom: 17px;
+  left: 8px;
+  height: 72px;
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  border-radius: 43% 43% 35% 35% / 38% 38% 52% 52%;
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.75) 0 4%, transparent 5%),
+    linear-gradient(145deg, #f5c2e7 0%, #cba6f7 58%, #89b4fa 100%);
+  box-shadow: 0 12px 22px rgba(203, 166, 247, 0.3), inset 0 -8px 14px rgba(30, 30, 46, 0.18);
+}
+
+.mascot-body i {
+  position: absolute;
+  top: 27px;
+  width: 8px;
+  height: 13px;
+  border-radius: 50%;
+  background: #1e1e2e;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.mascot-body i:first-child {
+  left: 27%;
+}
+
+.mascot-body i:last-child {
+  right: 27%;
+}
+
+.mascot-body::after {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  width: 18px;
+  height: 8px;
+  border-bottom: 2px solid #1e1e2e;
+  border-radius: 0 0 50% 50%;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.mascot-mini .mascot-body {
+  right: 1px;
+  bottom: 1px;
+  left: 1px;
+  height: 27px;
+  border-width: 1px;
+  border-radius: 10px;
+  box-shadow: 0 4px 9px rgba(203, 166, 247, 0.24);
+}
+
+.mascot-mini .mascot-body i {
+  top: 9px;
+  width: 3px;
+  height: 5px;
+}
+
+.mascot-mini .mascot-body::after {
+  bottom: 5px;
+  width: 8px;
+  height: 3px;
+  border-bottom-width: 1px;
+}
+
+.mascot-antenna {
+  position: absolute;
+  top: 2px;
+  left: 47px;
+  width: 3px;
+  height: 22px;
+  border-radius: 99px;
+  background: #cba6f7;
+  transform: rotate(9deg);
+  transform-origin: bottom;
+}
+
+.mascot-antenna::after {
+  position: absolute;
+  top: -8px;
+  left: -4px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #f9e2af;
+  box-shadow: 0 0 14px #f9e2af;
+  content: "";
+}
+
+.mascot-arm {
+  position: absolute;
+  z-index: 0;
+  bottom: 34px;
+  width: 18px;
+  height: 38px;
+  border: 2px solid rgba(255, 255, 255, 0.26);
+  border-radius: 99px;
+  background: #cba6f7;
+}
+
+.mascot-arm.left {
+  left: 0;
+  transform: rotate(28deg);
+}
+
+.mascot-arm.right {
+  right: 0;
+  transform: rotate(-28deg);
+}
+
+.mascot-foot {
+  position: absolute;
+  bottom: 8px;
+  width: 25px;
+  height: 13px;
+  border-radius: 50%;
+  background: #89b4fa;
+  box-shadow: inset 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.mascot-foot.left {
+  left: 18px;
+  transform: rotate(8deg);
+}
+
+.mascot-foot.right {
+  right: 18px;
+  transform: rotate(-8deg);
 }
 
 .island-mascot.large {
@@ -198,9 +396,9 @@ body,
 .mascot-stage {
   position: relative;
   display: flex;
-  width: 78px;
-  height: 74px;
-  flex: 0 0 78px;
+  width: 104px;
+  height: 110px;
+  flex: 0 0 104px;
   align-items: center;
   justify-content: center;
 }
@@ -252,6 +450,11 @@ body,
   color: #f5e0e8;
   font-size: 17px;
   font-weight: 650;
+}
+
+@keyframes mascot-float {
+  0%, 100% { transform: translateY(1px) rotate(-1deg); }
+  50% { transform: translateY(-5px) rotate(1deg); }
 }
 
 .panel-close {
