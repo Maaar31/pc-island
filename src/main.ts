@@ -41,63 +41,12 @@ panel.setAttribute("aria-hidden", "true");
 type TabId = "notifications" | "pomodoro" | "clipboard" | "settings";
 
 panel.innerHTML = `
-  <div class="panel-shell">
-    <header class="panel-header">
-      <div>
-        <div class="eyebrow">Island</div>
-        <h1 class="panel-title">Vue principale</h1>
-      </div>
-      <div class="tab-page" data-page="settings">
-        <h2>Réglages</h2>
-        <p>Les préférences restent locales à cette installation.</p>
-        <label class="setting-row"><span>Animations réduites</span><input class="setting-checkbox reduced-motion-setting" type="checkbox"></label>
-        <label class="setting-row"><span>Durée du Pomodoro</span><select class="pomodoro-duration-setting"><option value="15">15 minutes</option><option value="25">25 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></label>
-        <label class="setting-row"><span>Historique presse-papier</span><input class="setting-checkbox clipboard-history-setting" type="checkbox"></label>
-        <label class="setting-row"><span>Lancer au démarrage de Windows</span><input class="setting-checkbox autostart-setting" type="checkbox"></label>
-        <p class="settings-status" role="status"></p>
-      </div>
-      <button class="panel-close" type="button" aria-label="Réduire">−</button>
-    </header>
-    <div class="main-content">
-      <article class="module-card media-card">
-        <div>
-          <div class="module-label">Lecture en cours</div>
-          <div class="media-meta">Aucune lecture</div>
-          <div class="media-artist">Données de test</div>
-        </div>
-        <div class="media-controls" aria-label="Contrôles média">
-          <button class="media-control" type="button" aria-label="Précédent">‹</button>
-          <button class="media-control primary" type="button" aria-label="Lecture">▶</button>
-          <button class="media-control" type="button" aria-label="Suivant">›</button>
-        </div>
-      </article>
-      <article class="module-card sliders-card">
-        <div>
-          <div class="module-row"><span class="module-label">Volume</span><span class="module-value">62 %</span></div>
-          <div class="fake-slider" aria-hidden="true"></div>
-        </div>
-        <div>
-          <div class="module-row"><span class="module-label">Luminosité</span><span class="module-value">—</span></div>
-          <div class="fake-slider" aria-hidden="true"></div>
-        </div>
-      </article>
-    </div>
-    <footer class="panel-footer">
-      <span>Modules en préparation</span>
-      <button class="expand-button" type="button">Ouvrir les pages</button>
-    </footer>
-  </div>
+  <div class="panel-shell"></div>
 `;
 app.append(panel);
 
-const browserWake = document.createElement("div");
-browserWake.id = "browser-wake";
-browserWake.setAttribute("aria-label", "Zone de test du survol");
-app.append(browserWake);
-
 const shell = panel.querySelector<HTMLDivElement>(".panel-shell");
-const closeButton = panel.querySelector<HTMLButtonElement>(".panel-close");
-if (!shell || !closeButton) throw new Error("Island controls are missing");
+if (!shell) throw new Error("Island shell is missing");
 const panelShell = shell;
 
 const extended = document.createElement("div");
@@ -134,6 +83,15 @@ extended.innerHTML = `
     <p class="clipboard-status" role="status">Le contenu actuel sera lu uniquement à votre demande.</p>
     <input class="clipboard-search" type="search" placeholder="Rechercher dans l’historique" aria-label="Rechercher dans l'historique du presse-papier">
     <div class="clipboard-history" aria-label="Historique local"></div>
+  </div>
+  <div class="tab-page" data-page="settings">
+    <h2>Réglages</h2>
+    <p>Les préférences restent locales à cette installation.</p>
+    <label class="setting-row"><span>Animations réduites</span><input class="setting-checkbox reduced-motion-setting" type="checkbox"></label>
+    <label class="setting-row"><span>Durée du Pomodoro</span><select class="pomodoro-duration-setting"><option value="15">15 minutes</option><option value="25">25 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></label>
+    <label class="setting-row"><span>Historique presse-papier</span><input class="setting-checkbox clipboard-history-setting" type="checkbox"></label>
+    <label class="setting-row"><span>Lancer au démarrage de Windows</span><input class="setting-checkbox autostart-setting" type="checkbox"></label>
+    <p class="settings-status" role="status"></p>
   </div>
 `;
 const mainHeader = Object.assign(document.createElement("div"), {
@@ -660,8 +618,6 @@ if (isTauri) {
   void installWakeLeaveListener(scheduleClose);
 }
 
-browserWake.addEventListener("pointerenter", scheduleOpen);
-browserWake.addEventListener("pointerleave", scheduleClose);
 window.addEventListener("pointermove", (event) => {
   const zone = event.clientX >= (window.innerWidth - config.panel.collapsedWidth) / 2
     && event.clientX <= (window.innerWidth + config.panel.collapsedWidth) / 2
