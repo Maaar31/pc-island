@@ -120,7 +120,7 @@ const mainHeader = Object.assign(document.createElement("div"), {
 const extendedHeader = Object.assign(document.createElement("div"), {
   className: "panel-header",
   innerHTML: `
-    <div class="brand-lockup"><span class="island-mascot" aria-hidden="true"><i></i><i></i></span><div><div class="eyebrow">Island</div><h1 class="panel-title">Vue étendue</h1></div></div>
+    <div class="brand-lockup"><button class="panel-back" type="button" aria-label="Retour à la vue principale">‹</button><div><div class="eyebrow">Island</div><h1 class="panel-title extended-title">Pages</h1></div></div>
     <button class="panel-close" type="button" aria-label="Réduire">−</button>
   `
 });
@@ -130,7 +130,11 @@ mainView.className = "main-view";
 mainView.innerHTML = `
   <div class="main-content">
     <article class="module-card media-card">
-      <div><div class="module-label">Lecture en cours</div><div class="media-meta">Aucune lecture</div><div class="media-artist">Données de test</div></div>
+      <div class="welcome-row">
+        <div class="mascot-stage" aria-hidden="true"><span class="island-mascot large"><i></i><i></i></span><b></b></div>
+        <div><div class="module-label">Bonjour</div><div class="media-meta">Votre île est prête</div><div class="media-artist">Survolez, puis choisissez une action</div></div>
+      </div>
+      <div class="now-playing"><div class="module-label">Lecture en cours</div><div class="media-meta">Aucune lecture</div><div class="media-artist">Aucun lecteur actif</div></div>
       <div class="media-controls" aria-label="Contrôles média">
         <button class="media-control" type="button" aria-label="Précédent">‹</button>
         <button class="media-control primary" type="button" aria-label="Lecture">▶</button>
@@ -145,14 +149,15 @@ mainView.innerHTML = `
       <div><div class="module-row"><span class="module-label">Luminosité</span><span class="module-value">—</span></div><div class="fake-slider" aria-hidden="true"></div></div>
     </article>
   </div>
-  <footer class="panel-footer"><span>Modules en préparation</span><button class="expand-button" type="button">Ouvrir les pages</button></footer>
+  <footer class="panel-footer"><span>Modules en préparation</span><button class="expand-button" data-open-pages type="button">Ouvrir les pages</button></footer>
 `;
 panelShell.replaceChildren(mainHeader, mainView, extendedHeader, extended);
 panelShell.querySelectorAll(".panel-close").forEach((button) => button.addEventListener("click", closePanel));
-panelShell.querySelectorAll(".expand-button").forEach((button) => button.addEventListener("click", () => setExtended(true)));
+panelShell.querySelectorAll<HTMLButtonElement>("[data-open-pages]").forEach((button) => button.addEventListener("click", () => setExtended(true)));
+extendedHeader.querySelector(".panel-back")?.addEventListener("click", () => setExtended(false));
 
-const mediaTitle = mainView.querySelector<HTMLElement>(".media-meta");
-const mediaArtist = mainView.querySelector<HTMLElement>(".media-artist");
+const mediaTitle = mainView.querySelector<HTMLElement>(".now-playing .media-meta");
+const mediaArtist = mainView.querySelector<HTMLElement>(".now-playing .media-artist");
 const mediaToggle = mainView.querySelector<HTMLButtonElement>(".media-control.primary");
 const mediaPrevious = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Précédent']");
 const mediaNext = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Suivant']");
@@ -217,6 +222,15 @@ function setExtended(value: boolean) {
   panel.classList.toggle("extended", value);
   mainView.hidden = value;
   extended.hidden = !value;
+  if (value) {
+    const active = extended.querySelector<HTMLElement>(".tab-page.active");
+    const title = extendedHeader.querySelector<HTMLElement>(".extended-title");
+    if (title && active) title.textContent = active.dataset.page === "pomodoro"
+      ? "Pomodoro"
+      : active.dataset.page === "clipboard"
+        ? "Presse-papier"
+        : "Alertes";
+  }
   panelShell.querySelectorAll(".panel-header").forEach((header) => {
     header.classList.toggle("extended-header", value);
     header.toggleAttribute("hidden", value ? header === mainHeader : header === extendedHeader);
@@ -231,6 +245,9 @@ function selectTab(tab: TabId) {
   panelShell.querySelectorAll<HTMLElement>("[data-page]").forEach((page) => {
     page.classList.toggle("active", page.dataset.page === tab);
   });
+  const title = extendedHeader.querySelector<HTMLElement>(".extended-title");
+  if (title) title.textContent = tab === "pomodoro" ? "Pomodoro" : tab === "clipboard" ? "Presse-papier" : "Alertes";
+  window.requestAnimationFrame(pushPanelRect);
 }
 
 extended.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((button) => {
