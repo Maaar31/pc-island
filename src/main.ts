@@ -61,6 +61,11 @@ panel.innerHTML = `
 `;
 app.append(panel);
 
+const browserWake = document.createElement("div");
+browserWake.id = "browser-wake";
+browserWake.setAttribute("aria-label", "Zone de test du survol");
+app.append(browserWake);
+
 const shell = panel.querySelector<HTMLDivElement>(".panel-shell");
 const closeButton = panel.querySelector<HTMLButtonElement>(".panel-close");
 const expandButton = panel.querySelector<HTMLButtonElement>(".expand-button");
@@ -241,6 +246,10 @@ if (isTauri) {
     if (label === "wake") {
       window.addEventListener("mouseenter", () => void emitWakeEnter());
       return;
+    }
+    else {
+      browserWake.addEventListener("mouseenter", scheduleOpen);
+      browserWake.addEventListener("mouseleave", scheduleClose);
     }
     void installWakeListener(scheduleOpen);
     void setZoomForDpr(window.devicePixelRatio);

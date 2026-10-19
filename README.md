@@ -35,6 +35,14 @@ La structure de l'interface est maintenant en place avec des données factices :
 Les modules ne contactent encore aucune API Windows et restent explicitement
 indiqués comme en préparation.
 
+## Tester l'interface sans Rust
+
+Avec Node installé, lancer `npm run dev`, puis ouvrir `http://localhost:1420`.
+En mode navigateur, la zone de test est matérialisée par un petit repère au
+milieu du bord supérieur : la survoler ouvre l'île après 120 ms et la quitter
+la referme après 250 ms. Le lancement Tauri natif nécessite en plus Rust MSVC
+et les Build Tools Visual Studio.
+
 ## Prérequis de validation
 
 Rust MSVC, les Build Tools Visual Studio, Node 20+ et WebView2 sont requis.
