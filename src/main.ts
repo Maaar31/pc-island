@@ -17,8 +17,6 @@ import {
   type MediaSnapshot,
   systemVolume,
   setSystemVolume,
-  microphoneVolume,
-  setMicrophoneVolume,
   radioStatus,
   setRadio,
   type RadioSnapshot
@@ -110,8 +108,12 @@ extended.innerHTML = `
   <div class="tab-page" data-page="clipboard">
     <h2>Presse-papier</h2>
     <p>Lecture et écriture du presse-papier courant.</p>
-    <textarea class="clipboard-text" rows="3" placeholder="Texte du presse-papier"></textarea>
-    <div class="placeholder-list"><button class="expand-button clipboard-copy" type="button">Copier</button></div>
+    <textarea class="clipboard-text" rows="3" placeholder="Contenu texte du presse-papier"></textarea>
+    <div class="clipboard-actions">
+      <button class="expand-button clipboard-read" type="button">Lire</button>
+      <button class="expand-button clipboard-copy" type="button">Copier vers Windows</button>
+    </div>
+    <p class="clipboard-status" role="status">Le contenu actuel sera lu uniquement à votre demande.</p>
   </div>
 `;
 const mainHeader = Object.assign(document.createElement("div"), {
@@ -158,8 +160,7 @@ mainView.innerHTML = `
         <input id="volume-slider" class="system-slider" type="range" min="0" max="100" value="0" aria-label="Volume système">
       </div>
       <div>
-        <div class="module-row"><label class="module-label" for="microphone-slider">Microphone</label><span class="module-value microphone-value">—</span></div>
-        <input id="microphone-slider" class="system-slider" type="range" min="0" max="100" value="0" aria-label="Volume du microphone">
+        <div class="module-row"><span class="module-label">Connexions</span></div>
       </div>
       <div class="radio-row">
         <button class="radio-toggle" data-radio="wifi" type="button"><span>Wi-Fi</span><b>—</b></button>
@@ -183,8 +184,6 @@ const mediaPrevious = mainView.querySelector<HTMLButtonElement>(".media-control[
 const mediaNext = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Suivant']");
 const volumeSlider = mainView.querySelector<HTMLInputElement>("#volume-slider");
 const volumeValue = mainView.querySelector<HTMLElement>(".volume-value");
-const microphoneSlider = mainView.querySelector<HTMLInputElement>("#microphone-slider");
-const microphoneValue = mainView.querySelector<HTMLElement>(".microphone-value");
 function renderMedia(media: MediaSnapshot) {
   if (!mediaTitle || !mediaArtist || !mediaToggle) return;
   mediaTitle.textContent = media.available ? media.title : "Aucune lecture";
@@ -226,6 +225,7 @@ if (volumeSlider && volumeValue) {
   volumeSlider.addEventListener("input", () => {
     void setSystemVolume(Number(volumeSlider.value)).then((value) => {
       if (value !== null) renderVolume(value);
+      else volumeValue.textContent = "Erreur";
     });
   });
   if (isTauri) {
@@ -238,53 +238,31 @@ if (volumeSlider && volumeValue) {
       });
     }, 2000);
   }
-  if (microphoneSlider && microphoneValue) {
-    const renderMicrophone = (value: number) => {
-      const normalized = Math.round(Math.max(0, Math.min(100, value)));
-      microphoneSlider.value = String(normalized);
-      microphoneValue.textContent = `${normalized} %`;
-    };
-    microphoneSlider.addEventListener("input", () => {
-      void setMicrophoneVolume(Number(microphoneSlider.value)).then((value) => {
-        if (value !== null) renderMicrophone(value);
-      });
-    });
-    if (isTauri) {
-      void microphoneVolume().then((value) => {
-        if (value !== null) renderMicrophone(value);
-      });
-      window.setInterval(() => {
-        void microphoneVolume().then((value) => {
-          if (value !== null) renderMicrophone(value);
-        });
-      }, 2000);
-    }
-  }
-  const radioButtons = mainView.querySelectorAll<HTMLButtonElement>(".radio-toggle");
-  function renderRadios(snapshot: RadioSnapshot) {
-    radioButtons.forEach((button) => {
+}
+const radioButtons = mainView.querySelectorAll<HTMLButtonElement>(".radio-toggle");
+function renderRadios(snapshot: RadioSnapshot) {
+  radioButtons.forEach((button) => {
+    const kind = button.dataset.radio as "wifi" | "bluetooth";
+    const value = snapshot[kind];
+    button.classList.toggle("on", value === true);
+    button.classList.toggle("unavailable", value === null);
+    const state = button.querySelector("b");
+    if (state) state.textContent = value === null ? "Indisponible" : value ? "Activé" : "Désactivé";
+  });
+}
+if (radioButtons.length > 0 && isTauri) {
+  void radioStatus().then((snapshot) => {
+    if (snapshot) renderRadios(snapshot);
+  });
+  radioButtons.forEach((button) => {
+    button.addEventListener("click", () => {
       const kind = button.dataset.radio as "wifi" | "bluetooth";
-      const value = snapshot[kind];
-      button.classList.toggle("on", value === true);
-      button.classList.toggle("unavailable", value === null);
-      const state = button.querySelector("b");
-      if (state) state.textContent = value === null ? "Indisponible" : value ? "Activé" : "Désactivé";
-    });
-  }
-  if (radioButtons.length > 0 && isTauri) {
-    void radioStatus().then((snapshot) => {
-      if (snapshot) renderRadios(snapshot);
-    });
-    radioButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        const kind = button.dataset.radio as "wifi" | "bluetooth";
-        const current = button.classList.contains("on");
-        void setRadio(kind, !current).then((snapshot) => {
-          if (snapshot) renderRadios(snapshot);
-        });
+      const current = button.classList.contains("on");
+      void setRadio(kind, !current).then((snapshot) => {
+        if (snapshot) renderRadios(snapshot);
       });
     });
-  }
+  });
 }
 
 type PageId = "overview" | TabId;
@@ -352,6 +330,7 @@ extended.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((button) => {
 const pomodoroStatusElement = extended.querySelector<HTMLElement>(".pomodoro-status");
 const pomodoroToggle = extended.querySelector<HTMLButtonElement>(".pomodoro-toggle");
 const clipboardText = extended.querySelector<HTMLTextAreaElement>(".clipboard-text");
+const clipboardRead = extended.querySelector<HTMLButtonElement>(".clipboard-read");
 const clipboardCopy = extended.querySelector<HTMLButtonElement>(".clipboard-copy");
 if (pomodoroStatusElement && pomodoroToggle) {
   const renderPomodoro = (status: { running: boolean; remainingSeconds: number }) => {
@@ -379,13 +358,22 @@ if (pomodoroStatusElement && pomodoroToggle) {
 }
 if (clipboardText && clipboardCopy) {
   clipboardCopy.addEventListener("click", () => {
-    void writeClipboard(clipboardText.value);
-  });
-  if (isTauri) {
-    void readClipboard().then((text) => {
-      if (text !== null) clipboardText.value = text;
+    void writeClipboard(clipboardText.value).then((result) => {
+      const status = extended.querySelector<HTMLElement>(".clipboard-status");
+      if (status) status.textContent = result === null ? "Impossible d'écrire dans le presse-papier." : "Copié dans le presse-papier Windows.";
     });
-  }
+  });
+  clipboardRead?.addEventListener("click", () => {
+    void readClipboard().then((text) => {
+      const status = extended.querySelector<HTMLElement>(".clipboard-status");
+      if (text !== null) {
+        clipboardText.value = text;
+        if (status) status.textContent = text ? "Contenu lu depuis le presse-papier Windows." : "Le presse-papier texte est vide.";
+      } else if (status) {
+        status.textContent = "Impossible de lire le presse-papier.";
+      }
+    });
+  });
 }
 
 setExtended(false);

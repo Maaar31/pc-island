@@ -637,6 +637,17 @@ body,
   opacity: 0.55;
 }
 
+.clipboard-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.clipboard-status {
+  margin: 8px 0 0;
+  color: #9399b2;
+  font-size: 11px;
+}
+
 .module-row {
   justify-content: space-between;
   gap: 10px;

@@ -61,14 +61,6 @@ export function setSystemVolume(value: number) {
   return call<number>("set_system_volume", { value });
 }
 
-export function microphoneVolume() {
-  return call<number>("microphone_volume");
-}
-
-export function setMicrophoneVolume(value: number) {
-  return call<number>("set_microphone_volume", { value });
-}
-
 export type RadioSnapshot = { wifi: boolean | null; bluetooth: boolean | null };
 
 export function radioStatus() {

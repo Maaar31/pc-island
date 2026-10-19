@@ -52,8 +52,11 @@ et les Build Tools MSVC 2019 sont désormais disponibles.
 ## Phase 4 — modules système
 
 - Média Windows : lecture/pause, précédent, suivant et état du lecteur.
-- Volume de sortie et volume du microphone via Core Audio.
+- Volume de sortie Windows via Core Audio.
 - Wi-Fi et Bluetooth via `Windows.Devices.Radios`, avec état `Indisponible`
   si Windows ou les droits ne permettent pas l'accès.
 - Luminosité volontairement non affichée tant qu'un backend fiable pour les
   écrans compatibles n'est pas disponible.
+- Presse-papier texte explicite : le bouton `Lire` récupère le contenu
+  actuellement présent dans Windows, et `Copier vers Windows` remplace ce
+  contenu. Island ne prétend pas accéder à l'historique Win+V.

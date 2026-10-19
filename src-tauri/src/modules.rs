@@ -72,19 +72,29 @@ pub fn stop_pomodoro(state: &ModuleState) -> PomodoroSnapshot {
 }
 
 #[cfg(windows)]
+fn ensure_com_initialized() -> Result<(), String> {
+    use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
+
+    unsafe {
+        let result = CoInitializeEx(None, COINIT_MULTITHREADED);
+        if result.is_ok() || result.0 == 0x80010106u32 as i32 {
+            Ok(())
+        } else {
+            Err(result.to_string())
+        }
+    }
+}
+
+#[cfg(windows)]
 pub fn master_volume() -> Result<u8, String> {
     use windows::Win32::Media::Audio::{
         eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator,
     };
     use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
-    use windows::Win32::System::Com::{
-        CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED,
-    };
+    use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
 
     unsafe {
-        CoInitializeEx(None, COINIT_MULTITHREADED)
-            .ok()
-            .map_err(|error| error.to_string())?;
+        ensure_com_initialized()?;
         let devices: IMMDeviceEnumerator =
             CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|error| error.to_string())?;
@@ -112,14 +122,10 @@ pub fn set_master_volume(value: u8) -> Result<u8, String> {
         eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator,
     };
     use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
-    use windows::Win32::System::Com::{
-        CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED,
-    };
+    use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
 
     unsafe {
-        CoInitializeEx(None, COINIT_MULTITHREADED)
-            .ok()
-            .map_err(|error| error.to_string())?;
+        ensure_com_initialized()?;
         let devices: IMMDeviceEnumerator =
             CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|error| error.to_string())?;
@@ -139,60 +145,6 @@ pub fn set_master_volume(value: u8) -> Result<u8, String> {
 #[cfg(not(windows))]
 pub fn set_master_volume(_value: u8) -> Result<u8, String> {
     Err("Le volume système est disponible uniquement sous Windows".into())
-}
-
-#[cfg(windows)]
-fn endpoint_volume(flow: windows::Win32::Media::Audio::EDataFlow) -> Result<windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume, String> {
-    use windows::Win32::Media::Audio::{eConsole, IMMDeviceEnumerator, MMDeviceEnumerator};
-    use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
-
-    unsafe {
-        let devices: IMMDeviceEnumerator =
-            CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL)
-                .map_err(|error| error.to_string())?;
-        let device = devices
-            .GetDefaultAudioEndpoint(flow, eConsole)
-            .map_err(|error| error.to_string())?;
-        device
-            .Activate::<windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume>(CLSCTX_ALL, None)
-            .map_err(|error| error.to_string())
-    }
-}
-
-#[cfg(windows)]
-pub fn microphone_volume() -> Result<u8, String> {
-    use windows::Win32::Media::Audio::eCapture;
-    use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
-
-    unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok().map_err(|error| error.to_string())?; }
-    let endpoint = endpoint_volume(eCapture)?;
-    let value = unsafe { endpoint.GetMasterVolumeLevelScalar() }.map_err(|error| error.to_string())?;
-    Ok((value * 100.0).round().clamp(0.0, 100.0) as u8)
-}
-
-#[cfg(not(windows))]
-pub fn microphone_volume() -> Result<u8, String> {
-    Err("Le microphone est disponible uniquement sous Windows".into())
-}
-
-#[cfg(windows)]
-pub fn set_microphone_volume(value: u8) -> Result<u8, String> {
-    use windows::Win32::Media::Audio::eCapture;
-    use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
-
-    unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok().map_err(|error| error.to_string())?; }
-    let endpoint = endpoint_volume(eCapture)?;
-    unsafe {
-        endpoint
-            .SetMasterVolumeLevelScalar((value.min(100) as f32) / 100.0, std::ptr::null())
-            .map_err(|error| error.to_string())?;
-    }
-    Ok(value.min(100))
-}
-
-#[cfg(not(windows))]
-pub fn set_microphone_volume(_value: u8) -> Result<u8, String> {
-    Err("Le microphone est disponible uniquement sous Windows".into())
 }
 
 #[cfg(windows)]
