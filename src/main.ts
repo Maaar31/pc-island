@@ -22,7 +22,9 @@ import {
   setSystemMuted,
   radioStatus,
   setRadio,
-  type RadioSnapshot
+  type RadioSnapshot,
+  autostartStatus,
+  setAutostart
 } from "./bridge";
 import "./style.css";
 
@@ -33,7 +35,7 @@ const panel = document.createElement("section");
 panel.id = "panel";
 panel.setAttribute("aria-hidden", "true");
 
-type TabId = "notifications" | "pomodoro" | "clipboard";
+type TabId = "notifications" | "pomodoro" | "clipboard" | "settings";
 
 panel.innerHTML = `
   <div class="panel-shell">
@@ -41,6 +43,14 @@ panel.innerHTML = `
       <div>
         <div class="eyebrow">Island</div>
         <h1 class="panel-title">Vue principale</h1>
+      </div>
+      <div class="tab-page" data-page="settings">
+        <h2>Réglages</h2>
+        <p>Les préférences restent locales à cette installation.</p>
+        <label class="setting-row"><span>Animations réduites</span><input class="setting-checkbox reduced-motion-setting" type="checkbox"></label>
+        <label class="setting-row"><span>Durée du Pomodoro</span><select class="pomodoro-duration-setting"><option value="15">15 minutes</option><option value="25">25 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></label>
+        <label class="setting-row"><span>Lancer au démarrage de Windows</span><input class="setting-checkbox autostart-setting" type="checkbox"></label>
+        <p class="settings-status" role="status"></p>
       </div>
       <button class="panel-close" type="button" aria-label="Réduire">−</button>
     </header>
@@ -94,6 +104,7 @@ extended.innerHTML = `
     <button class="tab-button active" type="button" data-tab="notifications">Alertes</button>
     <button class="tab-button" type="button" data-tab="pomodoro">Pomodoro</button>
     <button class="tab-button" type="button" data-tab="clipboard">Presse-papier</button>
+    <button class="tab-button" type="button" data-tab="settings">Réglages</button>
   </nav>
   <div class="tab-page active" data-page="notifications">
     <h2>Notifications</h2>
@@ -130,6 +141,7 @@ const mainHeader = Object.assign(document.createElement("div"), {
       <button class="page-tab" data-page-target="notifications" type="button" aria-label="Alertes">●</button>
       <button class="page-tab" data-page-target="pomodoro" type="button" aria-label="Pomodoro">◷</button>
       <button class="page-tab" data-page-target="clipboard" type="button" aria-label="Presse-papier">▣</button>
+      <button class="page-tab" data-page-target="settings" type="button" aria-label="Réglages">⚙</button>
     </nav><button class="panel-close" type="button" aria-label="Réduire">−</button></div>
   `
 });
@@ -279,6 +291,13 @@ if (radioButtons.length > 0 && isTauri) {
 type PageId = "overview" | TabId;
 let currentPage: PageId = "overview";
 
+function pageTitle(page: PageId): string {
+  if (page === "pomodoro") return "Pomodoro";
+  if (page === "clipboard") return "Presse-papier";
+  if (page === "settings") return "Réglages";
+  return "Alertes";
+}
+
 function setPage(page: PageId) {
   currentPage = page;
   setExtended(page !== "overview");
@@ -295,7 +314,7 @@ function setPage(page: PageId) {
   }
   const title = extendedHeader.querySelector<HTMLElement>(".extended-title");
   if (title && page !== "overview") {
-    title.textContent = page === "pomodoro" ? "Pomodoro" : page === "clipboard" ? "Presse-papier" : "Alertes";
+    title.textContent = pageTitle(page);
   }
 }
 
@@ -308,11 +327,7 @@ function setExtended(value: boolean) {
   if (value) {
     const active = extended.querySelector<HTMLElement>(".tab-page.active");
     const title = extendedHeader.querySelector<HTMLElement>(".extended-title");
-    if (title && active) title.textContent = active.dataset.page === "pomodoro"
-      ? "Pomodoro"
-      : active.dataset.page === "clipboard"
-        ? "Presse-papier"
-        : "Alertes";
+    if (title && active) title.textContent = pageTitle(active.dataset.page as TabId);
   }
   panelShell.querySelectorAll(".panel-header").forEach((header) => {
     header.classList.toggle("extended-header", value);
@@ -330,7 +345,7 @@ function selectTab(tab: TabId) {
     page.classList.toggle("active", page.dataset.page === tab);
   });
   const title = extendedHeader.querySelector<HTMLElement>(".extended-title");
-  if (title) title.textContent = tab === "pomodoro" ? "Pomodoro" : tab === "clipboard" ? "Presse-papier" : "Alertes";
+  if (title) title.textContent = pageTitle(tab);
   window.requestAnimationFrame(pushPanelRect);
 }
 
@@ -344,6 +359,40 @@ const clipboardText = extended.querySelector<HTMLTextAreaElement>(".clipboard-te
 const clipboardRead = extended.querySelector<HTMLButtonElement>(".clipboard-read");
 const clipboardCopy = extended.querySelector<HTMLButtonElement>(".clipboard-copy");
 const clipboardHistoryList = extended.querySelector<HTMLElement>(".clipboard-history");
+const settingsPage = extended.querySelector<HTMLElement>('[data-page="settings"]');
+const reducedMotionSetting = extended.querySelector<HTMLInputElement>(".reduced-motion-setting");
+const pomodoroDurationSetting = extended.querySelector<HTMLSelectElement>(".pomodoro-duration-setting");
+const autostartSetting = extended.querySelector<HTMLInputElement>(".autostart-setting");
+const settingsStatus = extended.querySelector<HTMLElement>(".settings-status");
+
+const storedReducedMotion = localStorage.getItem("island.reducedMotion") === "true";
+const storedPomodoroDuration = localStorage.getItem("island.pomodoroDuration") ?? "25";
+document.documentElement.classList.toggle("reduced-motion", storedReducedMotion);
+if (reducedMotionSetting) reducedMotionSetting.checked = storedReducedMotion;
+if (pomodoroDurationSetting) pomodoroDurationSetting.value = storedPomodoroDuration;
+reducedMotionSetting?.addEventListener("change", () => {
+  const enabled = reducedMotionSetting.checked;
+  localStorage.setItem("island.reducedMotion", String(enabled));
+  document.documentElement.classList.toggle("reduced-motion", enabled);
+});
+pomodoroDurationSetting?.addEventListener("change", () => {
+  localStorage.setItem("island.pomodoroDuration", pomodoroDurationSetting.value);
+});
+autostartSetting?.addEventListener("change", () => {
+  void setAutostart(autostartSetting.checked).then((enabled) => {
+    if (enabled === null) {
+      autostartSetting.checked = !autostartSetting.checked;
+      if (settingsStatus) settingsStatus.textContent = "Impossible de modifier l'autostart.";
+    } else if (settingsStatus) {
+      settingsStatus.textContent = enabled ? "Autostart activé." : "Autostart désactivé.";
+    }
+  });
+});
+if (isTauri && autostartSetting) {
+  void autostartStatus().then((enabled) => {
+    if (enabled !== null) autostartSetting.checked = enabled;
+  });
+}
 if (pomodoroStatusElement && pomodoroToggle) {
   const renderPomodoro = (status: { running: boolean; remainingSeconds: number }) => {
     const minutes = Math.floor(status.remainingSeconds / 60).toString().padStart(2, "0");
@@ -352,9 +401,10 @@ if (pomodoroStatusElement && pomodoroToggle) {
     pomodoroToggle.textContent = status.running ? "Arrêter" : "Démarrer";
   };
   pomodoroToggle.addEventListener("click", async () => {
+    const duration = Number(localStorage.getItem("island.pomodoroDuration") ?? "25");
     const status = pomodoroToggle.textContent === "Arrêter"
       ? await pomodoroStop()
-      : await pomodoroStart();
+        : await pomodoroStart(duration * 60);
     if (status) renderPomodoro(status);
   });
   refreshPomodoro = () => {
