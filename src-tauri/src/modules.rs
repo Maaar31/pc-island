@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
@@ -8,9 +11,10 @@ pub struct ModuleState {
     pub pomodoro: Mutex<Pomodoro>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ClipboardHistoryState {
     pub history: Arc<Mutex<Vec<String>>>,
+    pub enabled: Arc<AtomicBool>,
 }
 
 #[derive(Clone, Serialize)]
@@ -303,19 +307,28 @@ pub fn clipboard_history(state: &ClipboardHistoryState) -> Vec<String> {
     state.history.lock().unwrap().clone()
 }
 
+pub fn set_clipboard_history_enabled(state: &ClipboardHistoryState, enabled: bool) -> bool {
+    state.enabled.store(enabled, Ordering::Relaxed);
+    enabled
+}
+
 pub fn remove_clipboard_item(state: &ClipboardHistoryState, text: &str) {
     state.history.lock().unwrap().retain(|item| item != text);
 }
 
-pub fn start_clipboard_watcher(history: Arc<Mutex<Vec<String>>>) {
+pub fn start_clipboard_watcher(state: Arc<ClipboardHistoryState>) {
     std::thread::spawn(move || {
         let mut last = String::new();
         loop {
+            if !state.enabled.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_secs(2));
+                continue;
+            }
             if let Ok(mut clipboard) = arboard::Clipboard::new() {
                 if let Ok(text) = clipboard.get_text() {
                     if !text.is_empty() && text != last {
                         last = text.clone();
-                        let mut items = history.lock().unwrap();
+                        let mut items = state.history.lock().unwrap();
                         items.retain(|item| item != &text);
                         items.insert(0, text);
                         items.truncate(20);

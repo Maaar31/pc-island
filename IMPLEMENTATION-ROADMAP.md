@@ -36,7 +36,7 @@ ou regroupé avec un autre changement étroitement lié.
    état explicite ou `Indisponible`; la détection automatique de changement de
    périphérique reste à approfondir.
 6. [x] Presse-papier : suppression d'un élément, copie directe depuis l'historique,
-   persistance locale facultative.
+   persistance locale facultative et activation/désactivation du watcher.
 7. [x] Animations et shell : mode animations réduites et transitions vivantes
    inspirées de Coucou sans reprendre ses assets.
 8. [ ] Tests manuels finaux : deux écrans, DPI mixte, lecteur média, audio,

@@ -57,6 +57,14 @@ export function clipboardHistory() {
   return call<string[]>("clipboard_history");
 }
 
+export function clipboardHistoryEnabled() {
+  return call<boolean>("clipboard_history_enabled");
+}
+
+export function setClipboardHistoryEnabled(enabled: boolean) {
+  return call<boolean>("set_clipboard_history_enabled", { enabled });
+}
+
 export function removeClipboardItem(text: string) {
   return call<void>("clipboard_remove", { text });
 }

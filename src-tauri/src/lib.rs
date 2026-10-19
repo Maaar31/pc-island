@@ -295,6 +295,19 @@ fn clipboard_history(state: State<modules::ClipboardHistoryState>) -> Vec<String
 }
 
 #[tauri::command]
+fn clipboard_history_enabled(state: State<modules::ClipboardHistoryState>) -> bool {
+    state.enabled.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[tauri::command]
+fn set_clipboard_history_enabled(
+    state: State<modules::ClipboardHistoryState>,
+    enabled: bool,
+) -> bool {
+    modules::set_clipboard_history_enabled(&state, enabled)
+}
+
+#[tauri::command]
 fn clipboard_remove(state: State<modules::ClipboardHistoryState>, text: String) {
     modules::remove_clipboard_item(&state, &text);
 }
@@ -430,6 +443,8 @@ pub fn run() {
             clipboard_write,
             clipboard_history,
             clipboard_remove,
+            clipboard_history_enabled,
+            set_clipboard_history_enabled,
             autostart_status,
             set_autostart_command,
             media_status,
@@ -479,7 +494,7 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
-            let history = app.state::<modules::ClipboardHistoryState>().history.clone();
+            let history = std::sync::Arc::new(app.state::<modules::ClipboardHistoryState>().inner().clone());
             modules::start_clipboard_watcher(history);
             Ok(())
         })

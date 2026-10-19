@@ -13,6 +13,8 @@ import {
   readClipboard,
   writeClipboard,
   clipboardHistory,
+  clipboardHistoryEnabled,
+  setClipboardHistoryEnabled,
   removeClipboardItem,
   mediaStatus,
   mediaControl,
@@ -50,6 +52,7 @@ panel.innerHTML = `
         <p>Les préférences restent locales à cette installation.</p>
         <label class="setting-row"><span>Animations réduites</span><input class="setting-checkbox reduced-motion-setting" type="checkbox"></label>
         <label class="setting-row"><span>Durée du Pomodoro</span><select class="pomodoro-duration-setting"><option value="15">15 minutes</option><option value="25">25 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></label>
+        <label class="setting-row"><span>Historique presse-papier</span><input class="setting-checkbox clipboard-history-setting" type="checkbox"></label>
         <label class="setting-row"><span>Lancer au démarrage de Windows</span><input class="setting-checkbox autostart-setting" type="checkbox"></label>
         <p class="settings-status" role="status"></p>
       </div>
@@ -374,6 +377,7 @@ const settingsPage = extended.querySelector<HTMLElement>('[data-page="settings"]
 const reducedMotionSetting = extended.querySelector<HTMLInputElement>(".reduced-motion-setting");
 const pomodoroDurationSetting = extended.querySelector<HTMLSelectElement>(".pomodoro-duration-setting");
 const autostartSetting = extended.querySelector<HTMLInputElement>(".autostart-setting");
+const clipboardHistorySetting = extended.querySelector<HTMLInputElement>(".clipboard-history-setting");
 const settingsStatus = extended.querySelector<HTMLElement>(".settings-status");
 
 const storedReducedMotion = localStorage.getItem("island.reducedMotion") === "true";
@@ -381,6 +385,24 @@ const storedPomodoroDuration = localStorage.getItem("island.pomodoroDuration") ?
 document.documentElement.classList.toggle("reduced-motion", storedReducedMotion);
 if (reducedMotionSetting) reducedMotionSetting.checked = storedReducedMotion;
 if (pomodoroDurationSetting) pomodoroDurationSetting.value = storedPomodoroDuration;
+if (clipboardHistorySetting) {
+  clipboardHistorySetting.checked = localStorage.getItem("island.clipboardHistory") !== "false";
+  clipboardHistorySetting.addEventListener("change", () => {
+    const enabled = clipboardHistorySetting.checked;
+    localStorage.setItem("island.clipboardHistory", String(enabled));
+    void setClipboardHistoryEnabled(enabled).catch(() => {
+      if (settingsStatus) settingsStatus.textContent = "Impossible de modifier l'historique presse-papier.";
+    });
+  });
+  if (isTauri) {
+    void clipboardHistoryEnabled().then((enabled) => {
+      if (enabled !== null) clipboardHistorySetting.checked = enabled;
+    });
+    void setClipboardHistoryEnabled(clipboardHistorySetting.checked).catch(() => {
+      if (settingsStatus) settingsStatus.textContent = "Impossible de synchroniser l'historique presse-papier.";
+    });
+  }
+}
 reducedMotionSetting?.addEventListener("change", () => {
   const enabled = reducedMotionSetting.checked;
   localStorage.setItem("island.reducedMotion", String(enabled));
@@ -440,6 +462,7 @@ if (pomodoroStatusElement && pomodoroToggle) {
 if (clipboardText && clipboardCopy) {
   const renderClipboardHistory = (items: string[]) => {
     if (!clipboardHistoryList) return;
+    localStorage.setItem("island.clipboardItems", JSON.stringify(items));
     clipboardHistoryList.replaceChildren(...items.map((item) => {
       const row = document.createElement("div");
       row.className = "clipboard-history-row";
@@ -475,9 +498,19 @@ if (clipboardText && clipboardCopy) {
   };
   clipboardSearch?.addEventListener("input", renderFilteredHistory);
   void clipboardHistory().then((items) => {
-    if (items) {
+    if (items && items.length > 0) {
       historyItems = items;
       renderFilteredHistory();
+    } else {
+      try {
+        const storedItems = JSON.parse(localStorage.getItem("island.clipboardItems") ?? "[]");
+        historyItems = Array.isArray(storedItems) && storedItems.every((item) => typeof item === "string")
+          ? storedItems
+          : [];
+        renderFilteredHistory();
+      } catch {
+        historyItems = [];
+      }
     }
   });
   clipboardCopy.addEventListener("click", () => {
