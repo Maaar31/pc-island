@@ -8,6 +8,15 @@ pub struct ModuleState {
     pub pomodoro: Mutex<Pomodoro>,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaSnapshot {
+    pub available: bool,
+    pub title: String,
+    pub artist: String,
+    pub playing: bool,
+}
+
 #[derive(Default)]
 pub struct Pomodoro {
     pub started_at: Option<Instant>,
@@ -133,4 +142,89 @@ pub fn read_clipboard() -> Result<String, String> {
 pub fn write_clipboard(text: &str) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|error| error.to_string())?;
     clipboard.set_text(text).map_err(|error| error.to_string())
+}
+
+#[cfg(windows)]
+fn current_media_session() -> Result<windows::Media::Control::GlobalSystemMediaTransportControlsSession, String> {
+    use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
+
+    GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
+        .map_err(|error| error.to_string())?
+        .get()
+        .map_err(|error| error.to_string())?
+        .GetCurrentSession()
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(windows)]
+pub fn media_status() -> MediaSnapshot {
+    use windows::Media::Control::GlobalSystemMediaTransportControlsSessionPlaybackStatus;
+
+    let Ok(session) = current_media_session() else {
+        return MediaSnapshot {
+            available: false,
+            title: String::new(),
+            artist: String::new(),
+            playing: false,
+        };
+    };
+    let Ok(properties) = session.TryGetMediaPropertiesAsync().and_then(|operation| operation.get()) else {
+        return MediaSnapshot {
+            available: false,
+            title: String::new(),
+            artist: String::new(),
+            playing: false,
+        };
+    };
+    let title = properties
+        .Title()
+        .map(|value| value.to_string_lossy())
+        .unwrap_or_default();
+    let artist = properties
+        .Artist()
+        .map(|value| value.to_string_lossy())
+        .unwrap_or_default();
+    let playing = session
+        .GetPlaybackInfo()
+        .and_then(|info| info.PlaybackStatus())
+        .is_ok_and(|status| status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing);
+    MediaSnapshot {
+        available: !title.trim().is_empty(),
+        title,
+        artist,
+        playing,
+    }
+}
+
+#[cfg(not(windows))]
+pub fn media_status() -> MediaSnapshot {
+    MediaSnapshot {
+        available: false,
+        title: String::new(),
+        artist: String::new(),
+        playing: false,
+    }
+}
+
+#[cfg(windows)]
+pub fn media_control(action: &str) -> Result<MediaSnapshot, String> {
+    let session = current_media_session()?;
+    let operation = match action {
+        "toggle" => session.TryTogglePlayPauseAsync().map(|operation| operation.get()),
+        "next" => session.TrySkipNextAsync().map(|operation| operation.get()),
+        "previous" => session.TrySkipPreviousAsync().map(|operation| operation.get()),
+        _ => return Err(format!("Commande média inconnue: {action}")),
+    };
+    let accepted = operation
+        .map_err(|error| error.to_string())?
+        .map_err(|error| error.to_string())?;
+    if !accepted {
+        return Err("Le lecteur média a refusé la commande".into());
+    }
+    Ok(media_status())
+}
+
+#[cfg(not(windows))]
+pub fn media_control(_action: &str) -> Result<MediaSnapshot, String> {
+    Err("Les contrôles média sont disponibles uniquement sous Windows".into())
 }

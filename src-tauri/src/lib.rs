@@ -215,6 +215,16 @@ fn clipboard_write(text: String) -> Result<(), String> {
     modules::write_clipboard(&text)
 }
 
+#[tauri::command]
+fn media_status() -> modules::MediaSnapshot {
+    modules::media_status()
+}
+
+#[tauri::command]
+fn media_control(action: String) -> Result<modules::MediaSnapshot, String> {
+    modules::media_control(&action)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(WindowState::default())
@@ -230,7 +240,9 @@ pub fn run() {
             system_volume,
             set_system_volume,
             clipboard_read,
-            clipboard_write
+            clipboard_write,
+            media_status,
+            media_control
         ])
         .setup(|app| {
             let island = app

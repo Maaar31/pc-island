@@ -11,7 +11,12 @@ import {
   pomodoroStop,
   pomodoroStatus,
   readClipboard,
-  writeClipboard
+  writeClipboard,
+  mediaStatus,
+  mediaControl,
+  type MediaSnapshot,
+  systemVolume,
+  setSystemVolume
 } from "./bridge";
 import "./style.css";
 
@@ -108,14 +113,14 @@ extended.innerHTML = `
 const mainHeader = Object.assign(document.createElement("div"), {
   className: "panel-header",
   innerHTML: `
-    <div><div class="eyebrow">Island</div><h1 class="panel-title">Vue principale</h1></div>
+    <div class="brand-lockup"><span class="island-mascot" aria-hidden="true"><i></i><i></i></span><div><div class="eyebrow">Island</div><h1 class="panel-title">Vue principale</h1></div></div>
     <button class="panel-close" type="button" aria-label="Réduire">−</button>
   `
 });
 const extendedHeader = Object.assign(document.createElement("div"), {
   className: "panel-header",
   innerHTML: `
-    <div><div class="eyebrow">Island</div><h1 class="panel-title">Vue étendue</h1></div>
+    <div class="brand-lockup"><span class="island-mascot" aria-hidden="true"><i></i><i></i></span><div><div class="eyebrow">Island</div><h1 class="panel-title">Vue étendue</h1></div></div>
     <button class="panel-close" type="button" aria-label="Réduire">−</button>
   `
 });
@@ -133,7 +138,10 @@ mainView.innerHTML = `
       </div>
     </article>
     <article class="module-card sliders-card">
-      <div><div class="module-row"><span class="module-label">Volume</span><span class="module-value">62 %</span></div><div class="fake-slider" aria-hidden="true"></div></div>
+      <div>
+        <div class="module-row"><label class="module-label" for="volume-slider">Volume</label><span class="module-value volume-value">—</span></div>
+        <input id="volume-slider" class="system-slider" type="range" min="0" max="100" value="0" aria-label="Volume système">
+      </div>
       <div><div class="module-row"><span class="module-label">Luminosité</span><span class="module-value">—</span></div><div class="fake-slider" aria-hidden="true"></div></div>
     </article>
   </div>
@@ -142,6 +150,68 @@ mainView.innerHTML = `
 panelShell.replaceChildren(mainHeader, mainView, extendedHeader, extended);
 panelShell.querySelectorAll(".panel-close").forEach((button) => button.addEventListener("click", closePanel));
 panelShell.querySelectorAll(".expand-button").forEach((button) => button.addEventListener("click", () => setExtended(true)));
+
+const mediaTitle = mainView.querySelector<HTMLElement>(".media-meta");
+const mediaArtist = mainView.querySelector<HTMLElement>(".media-artist");
+const mediaToggle = mainView.querySelector<HTMLButtonElement>(".media-control.primary");
+const mediaPrevious = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Précédent']");
+const mediaNext = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Suivant']");
+const volumeSlider = mainView.querySelector<HTMLInputElement>("#volume-slider");
+const volumeValue = mainView.querySelector<HTMLElement>(".volume-value");
+function renderMedia(media: MediaSnapshot) {
+  if (!mediaTitle || !mediaArtist || !mediaToggle) return;
+  mediaTitle.textContent = media.available ? media.title : "Aucune lecture";
+  mediaArtist.textContent = media.available ? (media.artist || "Artiste inconnu") : "Aucun lecteur actif";
+  mediaToggle.textContent = media.playing ? "Ⅱ" : "▶";
+  mediaToggle.setAttribute("aria-label", media.playing ? "Pause" : "Lecture");
+}
+function refreshMedia() {
+  if (!isTauri) return;
+  void mediaStatus().then((media) => {
+    if (media) renderMedia(media);
+  });
+}
+if (mediaToggle && mediaPrevious && mediaNext) {
+  mediaToggle.addEventListener("click", () => {
+    void mediaControl("toggle").then((media) => {
+      if (media) renderMedia(media);
+    });
+  });
+  mediaPrevious.addEventListener("click", () => {
+    void mediaControl("previous").then((media) => {
+      if (media) renderMedia(media);
+    });
+  });
+  mediaNext.addEventListener("click", () => {
+    void mediaControl("next").then((media) => {
+      if (media) renderMedia(media);
+    });
+  });
+  refreshMedia();
+  window.setInterval(refreshMedia, 2000);
+}
+if (volumeSlider && volumeValue) {
+  const renderVolume = (value: number) => {
+    const normalized = Math.round(Math.max(0, Math.min(100, value)));
+    volumeSlider.value = String(normalized);
+    volumeValue.textContent = `${normalized} %`;
+  };
+  volumeSlider.addEventListener("input", () => {
+    void setSystemVolume(Number(volumeSlider.value)).then((value) => {
+      if (value !== null) renderVolume(value);
+    });
+  });
+  if (isTauri) {
+    void systemVolume().then((value) => {
+      if (value !== null) renderVolume(value);
+    });
+    window.setInterval(() => {
+      void systemVolume().then((value) => {
+        if (value !== null) renderVolume(value);
+      });
+    }, 2000);
+  }
+}
 
 function setExtended(value: boolean) {
   panel.classList.toggle("extended", value);
@@ -252,6 +322,7 @@ function closePanel() {
   openTimer = undefined;
   if (!open) return;
   open = false;
+  setExtended(false);
   panel.classList.remove("open");
   panel.setAttribute("aria-hidden", "true");
   void setOpen(false);

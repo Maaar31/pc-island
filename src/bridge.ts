@@ -61,6 +61,21 @@ export function setSystemVolume(value: number) {
   return call<number>("set_system_volume", { value });
 }
 
+export type MediaSnapshot = {
+  available: boolean;
+  title: string;
+  artist: string;
+  playing: boolean;
+};
+
+export function mediaStatus() {
+  return call<MediaSnapshot>("media_status");
+}
+
+export function mediaControl(action: "toggle" | "next" | "previous") {
+  return call<MediaSnapshot>("media_control", { action });
+}
+
 export async function installWakeListener(onEnter: () => void) {
   if (!isTauri) return;
   await listen("wake-enter", onEnter);
