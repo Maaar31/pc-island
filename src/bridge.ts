@@ -30,9 +30,45 @@ export function setZoomForDpr(dpr: number) {
   return call<boolean>("fit_zoom", { dpr });
 }
 
+export function pomodoroStart(durationSeconds = 25 * 60) {
+  return call<{ running: boolean; remainingSeconds: number; durationSeconds: number }>(
+    "pomodoro_start",
+    { durationSeconds }
+  );
+}
+
+export function pomodoroStop() {
+  return call<{ running: boolean; remainingSeconds: number; durationSeconds: number }>("pomodoro_stop");
+}
+
+export function pomodoroStatus() {
+  return call<{ running: boolean; remainingSeconds: number; durationSeconds: number }>("pomodoro_status");
+}
+
+export function readClipboard() {
+  return call<string>("clipboard_read");
+}
+
+export function writeClipboard(text: string) {
+  return call<void>("clipboard_write", { text });
+}
+
+export function systemVolume() {
+  return call<number>("system_volume");
+}
+
+export function setSystemVolume(value: number) {
+  return call<number>("set_system_volume", { value });
+}
+
 export async function installWakeListener(onEnter: () => void) {
   if (!isTauri) return;
   await listen("wake-enter", onEnter);
+}
+
+export async function installWakeLeaveListener(onLeave: () => void) {
+  if (!isTauri) return;
+  await listen("wake-leave", onLeave);
 }
 
 export async function emitWakeEnter() {

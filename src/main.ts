@@ -4,7 +4,14 @@ import {
   setOpen,
   setPanelRect,
   setWakeVisible,
-  setZoomForDpr
+  setZoomForDpr,
+  installWakeListener,
+  installWakeLeaveListener,
+  pomodoroStart,
+  pomodoroStop,
+  pomodoroStatus,
+  readClipboard,
+  writeClipboard
 } from "./bridge";
 import "./style.css";
 
@@ -85,13 +92,17 @@ extended.innerHTML = `
   </div>
   <div class="tab-page" data-page="pomodoro">
     <h2>Pomodoro</h2>
-    <p>Le minuteur et son état Rust seront ajoutés dans la phase Pomodoro.</p>
-    <div class="placeholder-list"><div class="placeholder-item">Prêt · 25:00</div></div>
+    <p>Minuteur local, sans réseau.</p>
+    <div class="placeholder-list">
+      <div class="placeholder-item pomodoro-status">Prêt · 25:00</div>
+      <button class="expand-button pomodoro-toggle" type="button">Démarrer</button>
+    </div>
   </div>
   <div class="tab-page" data-page="clipboard">
     <h2>Presse-papier</h2>
-    <p>L’historique local sera alimenté par Rust, sans accès à Win+V.</p>
-    <div class="placeholder-list"><div class="placeholder-item">Historique vide</div></div>
+    <p>Lecture et écriture du presse-papier courant.</p>
+    <textarea class="clipboard-text" rows="3" placeholder="Texte du presse-papier"></textarea>
+    <div class="placeholder-list"><button class="expand-button clipboard-copy" type="button">Copier</button></div>
   </div>
 `;
 const mainHeader = Object.assign(document.createElement("div"), {
@@ -155,6 +166,45 @@ function selectTab(tab: TabId) {
 extended.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => selectTab(button.dataset.tab as TabId));
 });
+
+const pomodoroStatusElement = extended.querySelector<HTMLElement>(".pomodoro-status");
+const pomodoroToggle = extended.querySelector<HTMLButtonElement>(".pomodoro-toggle");
+const clipboardText = extended.querySelector<HTMLTextAreaElement>(".clipboard-text");
+const clipboardCopy = extended.querySelector<HTMLButtonElement>(".clipboard-copy");
+if (pomodoroStatusElement && pomodoroToggle) {
+  const renderPomodoro = (status: { running: boolean; remainingSeconds: number }) => {
+    const minutes = Math.floor(status.remainingSeconds / 60).toString().padStart(2, "0");
+    const seconds = (status.remainingSeconds % 60).toString().padStart(2, "0");
+    pomodoroStatusElement.textContent = `${status.running ? "En cours" : "Prêt"} · ${minutes}:${seconds}`;
+    pomodoroToggle.textContent = status.running ? "Arrêter" : "Démarrer";
+  };
+  pomodoroToggle.addEventListener("click", async () => {
+    const status = pomodoroToggle.textContent === "Arrêter"
+      ? await pomodoroStop()
+      : await pomodoroStart();
+    if (status) renderPomodoro(status);
+  });
+  if (isTauri) {
+    void pomodoroStatus().then((status) => {
+      if (status) renderPomodoro(status);
+    });
+    window.setInterval(() => {
+      void pomodoroStatus().then((status) => {
+        if (status) renderPomodoro(status);
+      });
+    }, 1000);
+  }
+}
+if (clipboardText && clipboardCopy) {
+  clipboardCopy.addEventListener("click", () => {
+    void writeClipboard(clipboardText.value);
+  });
+  if (isTauri) {
+    void readClipboard().then((text) => {
+      if (text !== null) clipboardText.value = text;
+    });
+  }
+}
 
 setExtended(false);
 
@@ -237,6 +287,11 @@ panel.addEventListener("mouseleave", scheduleClose);
 panel.addEventListener("transitionend", () => {
   if (!open) pushPanelRect();
 });
+
+if (isTauri) {
+  void installWakeListener(scheduleOpen);
+  void installWakeLeaveListener(scheduleClose);
+}
 
 browserWake.addEventListener("pointerenter", scheduleOpen);
 browserWake.addEventListener("pointerleave", scheduleClose);

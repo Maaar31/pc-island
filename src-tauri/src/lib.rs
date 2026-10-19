@@ -1,7 +1,10 @@
 use std::sync::Mutex;
+use std::time::Duration;
 
 use anyhow::anyhow;
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow};
+
+mod modules;
 
 const PANEL_WIDTH: u32 = 520;
 const PANEL_HEIGHT: u32 = 340;
@@ -53,11 +56,13 @@ fn set_native_region(window: &WebviewWindow, rect: Option<(i32, i32, i32, i32)>)
     if region.is_invalid() {
         return Err(tauri::Error::Anyhow(anyhow!("CreateRectRgn failed")));
     }
+
     let result = unsafe { SetWindowRgn(hwnd, Some(region), true) };
     if result == 0 {
         unsafe {
             let _ = DeleteObject(region.into());
         }
+
         return Err(tauri::Error::Anyhow(anyhow!("SetWindowRgn failed")));
     }
     Ok(())
@@ -66,6 +71,46 @@ fn set_native_region(window: &WebviewWindow, rect: Option<(i32, i32, i32, i32)>)
 #[cfg(not(windows))]
 fn set_native_region(_window: &WebviewWindow, _rect: Option<(i32, i32, i32, i32)>) -> tauri::Result<()> {
     Ok(())
+}
+
+#[cfg(windows)]
+fn start_wake_poller(app: AppHandle) {
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+
+    std::thread::spawn(move || {
+        let mut was_inside = false;
+        loop {
+            let Some(window) = app.get_webview_window("island") else {
+                break;
+            };
+            let inside = (|| -> tauri::Result<bool> {
+                let position = window.outer_position()?;
+                let size = window.outer_size()?;
+                let scale = window.scale_factor()?.max(0.1);
+                let mut cursor = POINT::default();
+                if unsafe { GetCursorPos(&mut cursor) }.is_err() {
+                    return Ok(false);
+                }
+                let local_x = cursor.x - position.x;
+                let local_y = cursor.y - position.y;
+                let wake_width = (WAKE_WIDTH as f64 * scale).round() as i32;
+                let wake_height = (WAKE_HEIGHT as f64 * scale).round() as i32;
+                let left = (size.width as i32 - wake_width) / 2;
+                Ok(local_x >= left
+                    && local_x <= left + wake_width
+                    && local_y >= 0
+                    && local_y <= wake_height)
+            })()
+            .unwrap_or(false);
+
+            if inside != was_inside {
+                was_inside = inside;
+                let _ = app.emit(if inside { "wake-enter" } else { "wake-leave" }, ());
+            }
+            std::thread::sleep(Duration::from_millis(16));
+        }
+    });
 }
 
 #[tauri::command]
@@ -83,8 +128,8 @@ fn set_wake_visible(app: AppHandle, visible: bool) -> tauri::Result<()> {
     let island = app
         .get_webview_window("island")
         .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Island window missing")))?;
+    let scale = island.scale_factor()?.max(0.1);
     if visible {
-        let scale = island.scale_factor()?.max(0.1);
         set_native_region(
             &island,
             Some((
@@ -130,14 +175,63 @@ fn fit_zoom(app: AppHandle, dpr: f64) -> tauri::Result<bool> {
     if !dpr.is_finite() || dpr <= 0.0 || (dpr - scale).abs() / scale < 0.02 {
         return Ok(false);
     }
+
     island.set_zoom((scale / dpr).clamp(0.25, 4.0))?;
     Ok(true)
+}
+
+#[tauri::command]
+fn pomodoro_start(state: State<modules::ModuleState>, duration_seconds: u64) -> modules::PomodoroSnapshot {
+    modules::start_pomodoro(&state, duration_seconds)
+}
+
+#[tauri::command]
+fn pomodoro_stop(state: State<modules::ModuleState>) -> modules::PomodoroSnapshot {
+    modules::stop_pomodoro(&state)
+}
+
+#[tauri::command]
+fn pomodoro_status(state: State<modules::ModuleState>) -> modules::PomodoroSnapshot {
+    modules::pomodoro_snapshot(&state)
+}
+
+#[tauri::command]
+fn system_volume() -> Result<u8, String> {
+    modules::master_volume()
+}
+
+#[tauri::command]
+fn set_system_volume(value: u8) -> Result<u8, String> {
+    modules::set_master_volume(value)
+}
+
+#[tauri::command]
+fn clipboard_read() -> Result<String, String> {
+    modules::read_clipboard()
+}
+
+#[tauri::command]
+fn clipboard_write(text: String) -> Result<(), String> {
+    modules::write_clipboard(&text)
 }
 
 pub fn run() {
     tauri::Builder::default()
         .manage(WindowState::default())
-        .invoke_handler(tauri::generate_handler![set_open, set_wake_visible, set_panel_rect, fit_zoom])
+        .manage(modules::ModuleState::default())
+        .invoke_handler(tauri::generate_handler![
+            set_open,
+            set_wake_visible,
+            set_panel_rect,
+            fit_zoom,
+            pomodoro_start,
+            pomodoro_stop,
+            pomodoro_status,
+            system_volume,
+            set_system_volume,
+            clipboard_read,
+            clipboard_write
+        ])
         .setup(|app| {
             let island = app
                 .get_webview_window("island")
@@ -153,6 +247,8 @@ pub fn run() {
                     (WAKE_HEIGHT as f64 * scale).round() as i32,
                 )),
             )?;
+            #[cfg(windows)]
+            start_wake_poller(app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())
