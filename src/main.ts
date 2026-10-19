@@ -77,8 +77,7 @@ app.append(browserWake);
 
 const shell = panel.querySelector<HTMLDivElement>(".panel-shell");
 const closeButton = panel.querySelector<HTMLButtonElement>(".panel-close");
-const expandButton = panel.querySelector<HTMLButtonElement>(".expand-button");
-if (!shell || !closeButton || !expandButton) throw new Error("Island controls are missing");
+if (!shell || !closeButton) throw new Error("Island controls are missing");
 const panelShell = shell;
 
 const extended = document.createElement("div");
@@ -236,6 +235,14 @@ function setPage(page: PageId) {
   panelShell.querySelectorAll<HTMLButtonElement>("[data-page-target]").forEach((button) => {
     button.classList.toggle("active", button.dataset.pageTarget === page);
   });
+  if (page !== "overview") {
+    panelShell.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.tab === page);
+    });
+    panelShell.querySelectorAll<HTMLElement>("[data-page]").forEach((view) => {
+      view.classList.toggle("active", view.dataset.page === page);
+    });
+  }
   const title = extendedHeader.querySelector<HTMLElement>(".extended-title");
   if (title && page !== "overview") {
     title.textContent = page === "pomodoro" ? "Pomodoro" : page === "clipboard" ? "Presse-papier" : "Alertes";
@@ -246,6 +253,8 @@ function setExtended(value: boolean) {
   panel.classList.toggle("extended", value);
   mainView.hidden = value;
   extended.hidden = !value;
+  mainView.setAttribute("aria-hidden", String(value));
+  extended.setAttribute("aria-hidden", String(!value));
   if (value) {
     const active = extended.querySelector<HTMLElement>(".tab-page.active");
     const title = extendedHeader.querySelector<HTMLElement>(".extended-title");

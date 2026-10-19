@@ -13,7 +13,7 @@ export const config = {
     animationMs: 280
   },
   levels: {
-    mainHeight: 220,
+    mainHeight: 300,
     extendedHeight: 340
   },
   colors: {

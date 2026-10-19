@@ -19,6 +19,10 @@ body,
   background: transparent;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 #browser-wake {
   position: fixed;
   z-index: 3;
@@ -73,7 +77,7 @@ body,
 
 #panel.open {
   width: 520px;
-  height: 220px;
+  height: 300px;
   opacity: 1;
   pointer-events: auto;
   border-radius: 22px;
@@ -510,6 +514,8 @@ body,
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   gap: 10px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .module-card {
@@ -529,8 +535,10 @@ body,
 
 .media-card {
   display: flex;
+  min-height: 0;
   flex-direction: column;
   justify-content: space-between;
+  overflow: hidden;
 }
 
 .media-meta {
@@ -580,6 +588,7 @@ body,
 
 .sliders-card {
   display: grid;
+  min-height: 0;
   align-content: center;
   gap: 16px;
 }
