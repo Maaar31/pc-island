@@ -184,6 +184,10 @@ const mediaPrevious = mainView.querySelector<HTMLButtonElement>(".media-control[
 const mediaNext = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Suivant']");
 const volumeSlider = mainView.querySelector<HTMLInputElement>("#volume-slider");
 const volumeValue = mainView.querySelector<HTMLElement>(".volume-value");
+let mediaPoll: number | undefined;
+let volumePoll: number | undefined;
+let pomodoroPoll: number | undefined;
+let refreshPomodoro: (() => void) | undefined;
 function renderMedia(media: MediaSnapshot) {
   if (!mediaTitle || !mediaArtist || !mediaToggle) return;
   mediaTitle.textContent = media.available ? media.title : "Aucune lecture";
@@ -213,8 +217,6 @@ if (mediaToggle && mediaPrevious && mediaNext) {
       if (media) renderMedia(media);
     });
   });
-  refreshMedia();
-  window.setInterval(refreshMedia, 2000);
 }
 if (volumeSlider && volumeValue) {
   const renderVolume = (value: number) => {
@@ -228,16 +230,6 @@ if (volumeSlider && volumeValue) {
       else volumeValue.textContent = "Erreur";
     });
   });
-  if (isTauri) {
-    void systemVolume().then((value) => {
-      if (value !== null) renderVolume(value);
-    });
-    window.setInterval(() => {
-      void systemVolume().then((value) => {
-        if (value !== null) renderVolume(value);
-      });
-    }, 2000);
-  }
 }
 const radioButtons = mainView.querySelectorAll<HTMLButtonElement>(".radio-toggle");
 function renderRadios(snapshot: RadioSnapshot) {
@@ -345,16 +337,11 @@ if (pomodoroStatusElement && pomodoroToggle) {
       : await pomodoroStart();
     if (status) renderPomodoro(status);
   });
-  if (isTauri) {
+  refreshPomodoro = () => {
     void pomodoroStatus().then((status) => {
       if (status) renderPomodoro(status);
     });
-    window.setInterval(() => {
-      void pomodoroStatus().then((status) => {
-        if (status) renderPomodoro(status);
-      });
-    }, 1000);
-  }
+  };
 }
 if (clipboardText && clipboardCopy) {
   clipboardCopy.addEventListener("click", () => {
@@ -382,6 +369,38 @@ let openTimer: number | undefined;
 let closeTimer: number | undefined;
 let open = false;
 let regionFrame: number | undefined;
+
+function stopModulePolling() {
+  if (mediaPoll !== undefined) window.clearInterval(mediaPoll);
+  if (volumePoll !== undefined) window.clearInterval(volumePoll);
+  if (pomodoroPoll !== undefined) window.clearInterval(pomodoroPoll);
+  mediaPoll = undefined;
+  volumePoll = undefined;
+  pomodoroPoll = undefined;
+}
+
+function startModulePolling() {
+  if (!isTauri) return;
+  stopModulePolling();
+  refreshMedia();
+  refreshPomodoro?.();
+  void systemVolume().then((value) => {
+    if (value !== null && volumeSlider && volumeValue) {
+      volumeSlider.value = String(value);
+      volumeValue.textContent = `${value} %`;
+    }
+  });
+  mediaPoll = window.setInterval(refreshMedia, 2000);
+  volumePoll = window.setInterval(() => {
+    void systemVolume().then((value) => {
+      if (value !== null && volumeSlider && volumeValue) {
+        volumeSlider.value = String(value);
+        volumeValue.textContent = `${value} %`;
+      }
+    });
+  }, 2000);
+  if (refreshPomodoro) pomodoroPoll = window.setInterval(refreshPomodoro, 1000);
+}
 
 function clearTimer(timer: number | undefined) {
   if (timer !== undefined) window.clearTimeout(timer);
@@ -413,6 +432,7 @@ function openPanel() {
   panel.setAttribute("aria-hidden", "false");
   void setOpen(true);
   void setWakeVisible(false);
+  startModulePolling();
   stopRegionAnimation();
   regionFrame = window.requestAnimationFrame(animatePanelRegion);
 }
@@ -422,6 +442,7 @@ function closePanel() {
   openTimer = undefined;
   if (!open) return;
   open = false;
+  stopModulePolling();
   setPage("overview");
   panel.classList.remove("open");
   panel.setAttribute("aria-hidden", "true");

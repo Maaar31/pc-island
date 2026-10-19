@@ -2,7 +2,11 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::anyhow;
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow,
+};
 
 mod modules;
 
@@ -10,6 +14,22 @@ const PANEL_WIDTH: u32 = 520;
 const PANEL_HEIGHT: u32 = 340;
 const WAKE_WIDTH: u32 = 240;
 const WAKE_HEIGHT: u32 = 10;
+
+fn tray_icon() -> tauri::image::Image<'static> {
+    let size = 16u32;
+    let mut pixels = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            let dx = x as i32 - 8;
+            let dy = y as i32 - 8;
+            if dx * dx + dy * dy <= 42 {
+                let index = ((y * size + x) * 4) as usize;
+                pixels[index..index + 4].copy_from_slice(&[137, 180, 250, 255]);
+            }
+        }
+    }
+    tauri::image::Image::new_owned(pixels, size, size)
+}
 
 #[derive(Default)]
 struct WindowState {
@@ -273,6 +293,19 @@ pub fn run() {
             )?;
             #[cfg(windows)]
             start_wake_poller(app.handle().clone());
+
+            let quit = MenuItem::with_id(app, "quit", "Quitter Island", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&quit])?;
+            TrayIconBuilder::with_id("island-tray")
+                .icon(tray_icon())
+                .tooltip("Island")
+                .menu(&menu)
+                .on_menu_event(|app, event| {
+                    if event.id() == "quit" {
+                        app.exit(0);
+                    }
+                })
+                .build(app)?;
             Ok(())
         })
         .run(tauri::generate_context!())

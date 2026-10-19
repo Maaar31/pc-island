@@ -60,3 +60,23 @@ et les Build Tools MSVC 2019 sont désormais disponibles.
 - Presse-papier texte explicite : le bouton `Lire` récupère le contenu
   actuellement présent dans Windows, et `Copier vers Windows` remplace ce
   contenu. Island ne prétend pas accéder à l'historique Win+V.
+
+## Phase 5 — finitions livrées
+
+- Les rafraîchissements média, volume et Pomodoro sont démarrés à l'ouverture
+  de l'île et arrêtés à sa fermeture.
+- Une icône de zone de notification fournit maintenant un menu `Quitter
+  Island`, indispensable puisque la fenêtre n'a volontairement pas de bouton
+  système.
+- Le bundle NSIS est activé en installation pour l'utilisateur courant.
+  Test validé avec `npm run tauri build -- --debug`.
+
+## Limites restantes
+
+- La luminosité n'est pas affichée sans backend fiable pour le moniteur.
+- Les notifications Windows restent reportées : l'accès à l'historique est
+  restreint pour une application Tauri non packagée.
+- Le presse-papier actuel est volontairement limité au texte courant ; il ne
+  reproduit pas l'historique Win+V.
+- La détection des applications plein écran et l'autostart Windows restent
+  à ajouter.
