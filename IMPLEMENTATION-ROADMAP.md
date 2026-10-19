@@ -29,13 +29,15 @@ ou regroupé avec un autre changement étroitement lié.
    durée Pomodoro et autostart.
 2. [x] Notification locale à la fin du Pomodoro, avec suivi maintenu pendant
    la fermeture de l'île lorsqu'un minuteur est lancé.
-3. [ ] Luminosité avec détection du matériel compatible et contrôle conditionnel.
+3. [~] Luminosité : contrôle reporté, car aucune API fiable et générique ne
+   permet de piloter les écrans externes ; aucun faux slider n'est affiché.
 4. [x] États média enrichis : progression et durée lorsque le lecteur les expose.
-5. [ ] Gestion des erreurs et périphériques : bouton réessayer et changements
-   de périphérique sans redémarrage.
+5. [~] Gestion des erreurs et périphériques : les appels échoués affichent un
+   état explicite ou `Indisponible`; la détection automatique de changement de
+   périphérique reste à approfondir.
 6. [x] Presse-papier : suppression d'un élément, copie directe depuis l'historique,
    persistance locale facultative.
-7. [ ] Animations et shell : mode animations réduites et transitions plus vivantes
+7. [x] Animations et shell : mode animations réduites et transitions vivantes
    inspirées de Coucou sans reprendre ses assets.
 8. [ ] Tests manuels finaux : deux écrans, DPI mixte, lecteur média, audio,
    radios, plein écran, autostart et installation.
