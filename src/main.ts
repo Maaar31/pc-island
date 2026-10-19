@@ -13,6 +13,7 @@ import {
   readClipboard,
   writeClipboard,
   clipboardHistory,
+  removeClipboardItem,
   mediaStatus,
   mediaControl,
   type MediaSnapshot,
@@ -164,7 +165,7 @@ mainView.innerHTML = `
         </div>
         <div><div class="module-label">Bonjour</div><div class="media-meta">Votre île est prête</div><div class="media-artist">Survolez, puis choisissez une action</div></div>
       </div>
-      <div class="now-playing"><div class="module-label">Lecture en cours</div><div class="media-meta">Aucune lecture</div><div class="media-artist">Aucun lecteur actif</div></div>
+      <div class="now-playing"><div class="module-label">Lecture en cours</div><div class="media-meta">Aucune lecture</div><div class="media-artist">Aucun lecteur actif</div><progress class="media-progress" max="1" value="0" hidden></progress></div>
       <div class="media-controls" aria-label="Contrôles média">
         <button class="media-control" type="button" aria-label="Précédent">‹</button>
         <button class="media-control primary" type="button" aria-label="Lecture">▶</button>
@@ -196,6 +197,7 @@ extendedHeader.querySelector(".panel-back")?.addEventListener("click", () => set
 
 const mediaTitle = mainView.querySelector<HTMLElement>(".now-playing .media-meta");
 const mediaArtist = mainView.querySelector<HTMLElement>(".now-playing .media-artist");
+const mediaProgress = mainView.querySelector<HTMLProgressElement>(".media-progress");
 const mediaToggle = mainView.querySelector<HTMLButtonElement>(".media-control.primary");
 const mediaPrevious = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Précédent']");
 const mediaNext = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Suivant']");
@@ -211,6 +213,14 @@ function renderMedia(media: MediaSnapshot) {
   if (!mediaTitle || !mediaArtist || !mediaToggle) return;
   mediaTitle.textContent = media.available ? media.title : "Aucune lecture";
   mediaArtist.textContent = media.available ? (media.artist || "Artiste inconnu") : "Aucun lecteur actif";
+  if (mediaProgress) {
+    const hasProgress = media.available && media.durationSeconds !== null && media.durationSeconds > 0 && media.positionSeconds !== null;
+    mediaProgress.hidden = !hasProgress;
+    if (hasProgress) {
+      mediaProgress.max = media.durationSeconds ?? 1;
+      mediaProgress.value = Math.min(media.positionSeconds ?? 0, media.durationSeconds ?? 1);
+    }
+  }
   mediaToggle.textContent = media.playing ? "Ⅱ" : "▶";
   mediaToggle.setAttribute("aria-label", media.playing ? "Pause" : "Lecture");
 }
@@ -417,15 +427,30 @@ if (clipboardText && clipboardCopy) {
   const renderClipboardHistory = (items: string[]) => {
     if (!clipboardHistoryList) return;
     clipboardHistoryList.replaceChildren(...items.map((item) => {
-      const button = document.createElement("button");
-      button.className = "clipboard-history-item";
-      button.type = "button";
-      button.textContent = item.replace(/\s+/g, " ").slice(0, 90);
-      button.title = item;
-      button.addEventListener("click", () => {
+      const row = document.createElement("div");
+      row.className = "clipboard-history-row";
+      const copy = document.createElement("button");
+      copy.className = "clipboard-history-item";
+      copy.type = "button";
+      copy.textContent = item.replace(/\s+/g, " ").slice(0, 90);
+      copy.title = "Copier cet élément";
+      copy.addEventListener("click", () => {
         clipboardText.value = item;
+        void writeClipboard(item);
       });
-      return button;
+      const remove = document.createElement("button");
+      remove.className = "clipboard-history-remove";
+      remove.type = "button";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", "Supprimer cet élément");
+      remove.addEventListener("click", () => {
+        void removeClipboardItem(item).then(() => {
+          historyItems = historyItems.filter((entry) => entry !== item);
+          renderFilteredHistory();
+        });
+      });
+      row.append(copy, remove);
+      return row;
     }));
   };
   const clipboardSearch = extended.querySelector<HTMLInputElement>(".clipboard-search");

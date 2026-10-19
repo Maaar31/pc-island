@@ -294,6 +294,11 @@ fn clipboard_history(state: State<modules::ClipboardHistoryState>) -> Vec<String
     modules::clipboard_history(&state)
 }
 
+#[tauri::command]
+fn clipboard_remove(state: State<modules::ClipboardHistoryState>, text: String) {
+    modules::remove_clipboard_item(&state, &text);
+}
+
 #[cfg(windows)]
 fn autostart_enabled() -> Result<bool, String> {
     use windows::core::w;
@@ -424,6 +429,7 @@ pub fn run() {
             clipboard_read,
             clipboard_write,
             clipboard_history,
+            clipboard_remove,
             autostart_status,
             set_autostart_command,
             media_status,

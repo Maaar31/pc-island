@@ -29,10 +29,10 @@ ou regroupé avec un autre changement étroitement lié.
    durée Pomodoro et autostart.
 2. [ ] Notification locale à la fin du Pomodoro.
 3. [ ] Luminosité avec détection du matériel compatible et contrôle conditionnel.
-4. [ ] États média enrichis : progression, durée et lecteur actif.
+4. [x] États média enrichis : progression et durée lorsque le lecteur les expose.
 5. [ ] Gestion des erreurs et périphériques : bouton réessayer et changements
    de périphérique sans redémarrage.
-6. [ ] Presse-papier : suppression d'un élément, copie directe depuis l'historique,
+6. [x] Presse-papier : suppression d'un élément, copie directe depuis l'historique,
    persistance locale facultative.
 7. [ ] Animations et shell : mode animations réduites et transitions plus vivantes
    inspirées de Coucou sans reprendre ses assets.

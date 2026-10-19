@@ -57,6 +57,10 @@ export function clipboardHistory() {
   return call<string[]>("clipboard_history");
 }
 
+export function removeClipboardItem(text: string) {
+  return call<void>("clipboard_remove", { text });
+}
+
 export function autostartStatus() {
   return call<boolean>("autostart_status");
 }
@@ -96,6 +100,8 @@ export type MediaSnapshot = {
   title: string;
   artist: string;
   playing: boolean;
+  positionSeconds: number | null;
+  durationSeconds: number | null;
 };
 
 export function mediaStatus() {

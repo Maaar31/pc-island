@@ -20,6 +20,8 @@ pub struct MediaSnapshot {
     pub title: String,
     pub artist: String,
     pub playing: bool,
+    pub position_seconds: Option<f64>,
+    pub duration_seconds: Option<f64>,
 }
 
 #[derive(Clone, Serialize)]
@@ -301,6 +303,10 @@ pub fn clipboard_history(state: &ClipboardHistoryState) -> Vec<String> {
     state.history.lock().unwrap().clone()
 }
 
+pub fn remove_clipboard_item(state: &ClipboardHistoryState, text: &str) {
+    state.history.lock().unwrap().retain(|item| item != text);
+}
+
 pub fn start_clipboard_watcher(history: Arc<Mutex<Vec<String>>>) {
     std::thread::spawn(move || {
         let mut last = String::new();
@@ -343,6 +349,8 @@ pub fn media_status() -> MediaSnapshot {
             title: String::new(),
             artist: String::new(),
             playing: false,
+            position_seconds: None,
+            duration_seconds: None,
         };
     };
     let Ok(properties) = session.TryGetMediaPropertiesAsync().and_then(|operation| operation.get()) else {
@@ -351,6 +359,8 @@ pub fn media_status() -> MediaSnapshot {
             title: String::new(),
             artist: String::new(),
             playing: false,
+            position_seconds: None,
+            duration_seconds: None,
         };
     };
     let title = properties
@@ -365,11 +375,22 @@ pub fn media_status() -> MediaSnapshot {
         .GetPlaybackInfo()
         .and_then(|info| info.PlaybackStatus())
         .is_ok_and(|status| status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing);
+    let timeline = session.GetTimelineProperties().ok();
+    let position_seconds = timeline
+        .as_ref()
+        .and_then(|value| value.Position().ok())
+        .map(|value| value.Duration.max(0) as f64 / 10_000_000.0);
+    let duration_seconds = timeline
+        .as_ref()
+        .and_then(|value| value.EndTime().ok())
+        .map(|value| value.Duration.max(0) as f64 / 10_000_000.0);
     MediaSnapshot {
         available: !title.trim().is_empty(),
         title,
         artist,
         playing,
+        position_seconds,
+        duration_seconds,
     }
 }
 
@@ -380,6 +401,8 @@ pub fn media_status() -> MediaSnapshot {
         title: String::new(),
         artist: String::new(),
         playing: false,
+        position_seconds: None,
+        duration_seconds: None,
     }
 }
 
