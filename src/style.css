@@ -21,6 +21,7 @@ body,
 
 #browser-wake {
   position: fixed;
+  z-index: 3;
   top: 0;
   left: 50%;
   width: 240px;
@@ -33,6 +34,7 @@ body,
 
 #browser-wake::after {
   position: absolute;
+  z-index: 2;
   top: 12px;
   left: 50%;
   width: max-content;

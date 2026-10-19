@@ -248,8 +248,20 @@ if (isTauri) {
       return;
     }
     else {
-      browserWake.addEventListener("mouseenter", scheduleOpen);
-      browserWake.addEventListener("mouseleave", scheduleClose);
+      browserWake.addEventListener("pointerenter", scheduleOpen);
+      browserWake.addEventListener("pointerleave", scheduleClose);
+      window.addEventListener("pointermove", (event) => {
+        const zone = event.clientX >= (window.innerWidth - config.panel.collapsedWidth) / 2
+          && event.clientX <= (window.innerWidth + config.panel.collapsedWidth) / 2
+          && event.clientY >= config.panel.offsetY
+          && event.clientY <= config.panel.offsetY + config.panel.collapsedHeight;
+        const overPanel = panel.matches(":hover");
+        if (zone || overPanel) {
+          scheduleOpen();
+        } else if (!openTimer) {
+          scheduleClose();
+        }
+      });
     }
     void installWakeListener(scheduleOpen);
     void setZoomForDpr(window.devicePixelRatio);
