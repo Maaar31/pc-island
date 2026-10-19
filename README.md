@@ -77,6 +77,8 @@ et les Build Tools MSVC 2019 sont désormais disponibles.
   la page Presse-papier ; il ne lit toujours pas l'historique système Win+V.
 - Le volume possède maintenant un bouton mute/unmute réel via Core Audio.
 - L'historique presse-papier dispose d'une recherche locale instantanée.
+- Le Pomodoro demande l'autorisation de notification du WebView et affiche une
+  notification locale à la fin du cycle ; son suivi continue même île fermée.
 - Le bundle NSIS est activé en installation pour l'utilisateur courant.
   Test validé avec `npm run tauri build -- --debug`.
 

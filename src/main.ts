@@ -209,6 +209,7 @@ let mediaPoll: number | undefined;
 let volumePoll: number | undefined;
 let pomodoroPoll: number | undefined;
 let refreshPomodoro: (() => void) | undefined;
+let pomodoroRunning = false;
 function renderMedia(media: MediaSnapshot) {
   if (!mediaTitle || !mediaArtist || !mediaToggle) return;
   mediaTitle.textContent = media.available ? media.title : "Aucune lecture";
@@ -404,13 +405,26 @@ if (isTauri && autostartSetting) {
   });
 }
 if (pomodoroStatusElement && pomodoroToggle) {
+  let wasRunning = false;
   const renderPomodoro = (status: { running: boolean; remainingSeconds: number }) => {
     const minutes = Math.floor(status.remainingSeconds / 60).toString().padStart(2, "0");
     const seconds = (status.remainingSeconds % 60).toString().padStart(2, "0");
     pomodoroStatusElement.textContent = `${status.running ? "En cours" : "Prêt"} · ${minutes}:${seconds}`;
     pomodoroToggle.textContent = status.running ? "Arrêter" : "Démarrer";
+    pomodoroRunning = status.running;
+    if (wasRunning && !status.running && "Notification" in window && Notification.permission === "granted") {
+      new Notification("Pomodoro terminé", { body: "Votre session est terminée." });
+    }
+    wasRunning = status.running;
+    if (!status.running && pomodoroPoll !== undefined) {
+      window.clearInterval(pomodoroPoll);
+      pomodoroPoll = undefined;
+    }
   };
   pomodoroToggle.addEventListener("click", async () => {
+    if (pomodoroToggle.textContent !== "Arrêter" && "Notification" in window && Notification.permission === "default") {
+      await Notification.requestPermission();
+    }
     const duration = Number(localStorage.getItem("island.pomodoroDuration") ?? "25");
     const status = pomodoroToggle.textContent === "Arrêter"
       ? await pomodoroStop()
@@ -501,10 +515,10 @@ let regionFrame: number | undefined;
 function stopModulePolling() {
   if (mediaPoll !== undefined) window.clearInterval(mediaPoll);
   if (volumePoll !== undefined) window.clearInterval(volumePoll);
-  if (pomodoroPoll !== undefined) window.clearInterval(pomodoroPoll);
+  if (pomodoroPoll !== undefined && !pomodoroRunning) window.clearInterval(pomodoroPoll);
   mediaPoll = undefined;
   volumePoll = undefined;
-  pomodoroPoll = undefined;
+  if (!pomodoroRunning) pomodoroPoll = undefined;
 }
 
 function startModulePolling() {
@@ -527,7 +541,7 @@ function startModulePolling() {
       }
     });
   }, 2000);
-  if (refreshPomodoro) pomodoroPoll = window.setInterval(refreshPomodoro, 1000);
+  if (refreshPomodoro && pomodoroPoll === undefined) pomodoroPoll = window.setInterval(refreshPomodoro, 1000);
 }
 
 function clearTimer(timer: number | undefined) {

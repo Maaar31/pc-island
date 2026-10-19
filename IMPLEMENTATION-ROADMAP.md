@@ -27,7 +27,8 @@ ou regroupé avec un autre changement étroitement lié.
 
 1. [x] Page Réglages persistante : animations, plein écran, historique clipboard,
    durée Pomodoro et autostart.
-2. [ ] Notification locale à la fin du Pomodoro.
+2. [x] Notification locale à la fin du Pomodoro, avec suivi maintenu pendant
+   la fermeture de l'île lorsqu'un minuteur est lancé.
 3. [ ] Luminosité avec détection du matériel compatible et contrôle conditionnel.
 4. [x] États média enrichis : progression et durée lorsque le lecteur les expose.
 5. [ ] Gestion des erreurs et périphériques : bouton réessayer et changements
