@@ -147,6 +147,65 @@ pub fn set_master_volume(value: u8) -> Result<u8, String> {
     }
 }
 
+#[cfg(windows)]
+pub fn master_muted() -> Result<bool, String> {
+        use windows::Win32::Media::Audio::{
+            eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator,
+        };
+        use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
+        use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
+
+        unsafe {
+            ensure_com_initialized()?;
+            let devices: IMMDeviceEnumerator =
+                CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|error| error.to_string())?;
+            let device = devices
+                .GetDefaultAudioEndpoint(eRender, eConsole)
+                .map_err(|error| error.to_string())?;
+            let endpoint: IAudioEndpointVolume = device
+                .Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None)
+                .map_err(|error| error.to_string())?;
+            endpoint.GetMute().map(|value| value.as_bool()).map_err(|error| error.to_string())
+        }
+}
+
+#[cfg(not(windows))]
+pub fn master_muted() -> Result<bool, String> {
+        Err("Le mute système est disponible uniquement sous Windows".into())
+}
+
+#[cfg(windows)]
+pub fn set_master_muted(muted: bool) -> Result<bool, String> {
+        use windows::Win32::Media::Audio::{
+            eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator,
+        };
+        use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
+        use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
+
+        unsafe {
+            ensure_com_initialized()?;
+            let devices: IMMDeviceEnumerator =
+                CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|error| error.to_string())?;
+            let device = devices
+                .GetDefaultAudioEndpoint(eRender, eConsole)
+                .map_err(|error| error.to_string())?;
+            let endpoint: IAudioEndpointVolume = device
+                .Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None)
+                .map_err(|error| error.to_string())?;
+            endpoint
+                .SetMute(muted, std::ptr::null())
+                .map_err(|error| error.to_string())?;
+            Ok(muted)
+        }
+}
+
+#[cfg(not(windows))]
+pub fn set_master_muted(_muted: bool) -> Result<bool, String> {
+        Err("Le mute système est disponible uniquement sous Windows".into())
+}
+
 #[cfg(not(windows))]
 pub fn set_master_volume(_value: u8) -> Result<u8, String> {
     Err("Le volume système est disponible uniquement sous Windows".into())

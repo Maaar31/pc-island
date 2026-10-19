@@ -75,6 +75,8 @@ et les Build Tools MSVC 2019 sont désormais disponibles.
   Windows pour l'utilisateur courant.
 - Un historique local de 20 textes est capturé côté Rust et consultable depuis
   la page Presse-papier ; il ne lit toujours pas l'historique système Win+V.
+- Le volume possède maintenant un bouton mute/unmute réel via Core Audio.
+- L'historique presse-papier dispose d'une recherche locale instantanée.
 - Le bundle NSIS est activé en installation pour l'utilisateur courant.
   Test validé avec `npm run tauri build -- --debug`.
 
@@ -85,3 +87,5 @@ et les Build Tools MSVC 2019 sont désormais disponibles.
   restreint pour une application Tauri non packagée.
 - Le presse-papier actuel est volontairement limité au texte courant ; il ne
   reproduit pas l'historique Win+V et ne conserve pas les images ou fichiers.
+- Le mute agit sur la sortie audio système par défaut, pas sur une application
+  individuelle.

@@ -73,6 +73,14 @@ export function setSystemVolume(value: number) {
   return call<number>("set_system_volume", { value });
 }
 
+export function systemMuted() {
+  return call<boolean>("system_muted");
+}
+
+export function setSystemMuted(muted: boolean) {
+  return call<boolean>("set_system_muted", { muted });
+}
+
 export type RadioSnapshot = { wifi: boolean | null; bluetooth: boolean | null };
 
 export function radioStatus() {

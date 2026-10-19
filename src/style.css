@@ -637,6 +637,22 @@ body,
   opacity: 0.55;
 }
 
+.mute-button {
+  margin-left: 8px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 6px;
+  color: #cdd6f4;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.mute-button:hover,
+.mute-button.muted {
+  background: rgba(243, 139, 168, 0.16);
+}
+
 .clipboard-actions {
   display: flex;
   gap: 8px;
@@ -654,6 +670,18 @@ body,
   gap: 5px;
   margin-top: 10px;
   overflow: auto;
+}
+
+.clipboard-search {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 9px;
+  border: 1px solid rgba(205, 214, 244, 0.1);
+  border-radius: 8px;
+  color: #cdd6f4;
+  background: rgba(17, 17, 27, 0.5);
+  font: inherit;
+  font-size: 11px;
 }
 
 .clipboard-history-item {

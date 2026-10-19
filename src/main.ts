@@ -18,6 +18,8 @@ import {
   type MediaSnapshot,
   systemVolume,
   setSystemVolume,
+  systemMuted,
+  setSystemMuted,
   radioStatus,
   setRadio,
   type RadioSnapshot
@@ -115,6 +117,7 @@ extended.innerHTML = `
       <button class="expand-button clipboard-copy" type="button">Copier vers Windows</button>
     </div>
     <p class="clipboard-status" role="status">Le contenu actuel sera lu uniquement à votre demande.</p>
+    <input class="clipboard-search" type="search" placeholder="Rechercher dans l’historique" aria-label="Rechercher dans l'historique du presse-papier">
     <div class="clipboard-history" aria-label="Historique local"></div>
   </div>
 `;
@@ -158,7 +161,7 @@ mainView.innerHTML = `
     </article>
     <article class="module-card sliders-card">
       <div>
-        <div class="module-row"><label class="module-label" for="volume-slider">Volume</label><span class="module-value volume-value">—</span></div>
+        <div class="module-row"><label class="module-label" for="volume-slider">Volume</label><span class="module-value volume-value">—</span><button class="mute-button" type="button" aria-label="Couper le son">🔊</button></div>
         <input id="volume-slider" class="system-slider" type="range" min="0" max="100" value="0" aria-label="Volume système">
       </div>
       <div>
@@ -186,6 +189,8 @@ const mediaPrevious = mainView.querySelector<HTMLButtonElement>(".media-control[
 const mediaNext = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Suivant']");
 const volumeSlider = mainView.querySelector<HTMLInputElement>("#volume-slider");
 const volumeValue = mainView.querySelector<HTMLElement>(".volume-value");
+const muteButton = mainView.querySelector<HTMLButtonElement>(".mute-button");
+let muted = false;
 let mediaPoll: number | undefined;
 let volumePoll: number | undefined;
 let pomodoroPoll: number | undefined;
@@ -221,6 +226,18 @@ if (mediaToggle && mediaPrevious && mediaNext) {
   });
 }
 if (volumeSlider && volumeValue) {
+  const renderMute = (value: boolean) => {
+    muted = value;
+    if (!muteButton) return;
+    muteButton.textContent = muted ? "🔇" : "🔊";
+    muteButton.setAttribute("aria-label", muted ? "Réactiver le son" : "Couper le son");
+    muteButton.classList.toggle("muted", muted);
+  };
+  muteButton?.addEventListener("click", () => {
+    void setSystemMuted(!muted).then((value) => {
+      if (value !== null) renderMute(value);
+    });
+  });
   const renderVolume = (value: number) => {
     const normalized = Math.round(Math.max(0, Math.min(100, value)));
     volumeSlider.value = String(normalized);
@@ -361,15 +378,28 @@ if (clipboardText && clipboardCopy) {
       return button;
     }));
   };
+  const clipboardSearch = extended.querySelector<HTMLInputElement>(".clipboard-search");
+  let historyItems: string[] = [];
+  const renderFilteredHistory = () => {
+    const query = clipboardSearch?.value.trim().toLocaleLowerCase() ?? "";
+    renderClipboardHistory(historyItems.filter((item) => item.toLocaleLowerCase().includes(query)));
+  };
+  clipboardSearch?.addEventListener("input", renderFilteredHistory);
   void clipboardHistory().then((items) => {
-    if (items) renderClipboardHistory(items);
+    if (items) {
+      historyItems = items;
+      renderFilteredHistory();
+    }
   });
   clipboardCopy.addEventListener("click", () => {
     void writeClipboard(clipboardText.value).then((result) => {
       const status = extended.querySelector<HTMLElement>(".clipboard-status");
       if (status) status.textContent = result === null ? "Impossible d'écrire dans le presse-papier." : "Copié dans le presse-papier Windows.";
       if (result !== null) void clipboardHistory().then((items) => {
-        if (items) renderClipboardHistory(items);
+        if (items) {
+          historyItems = items;
+          renderFilteredHistory();
+        }
       });
     });
   });

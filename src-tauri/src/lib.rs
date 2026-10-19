@@ -258,6 +258,16 @@ fn set_system_volume(value: u8) -> Result<u8, String> {
 }
 
 #[tauri::command]
+fn system_muted() -> Result<bool, String> {
+    modules::master_muted()
+}
+
+#[tauri::command]
+fn set_system_muted(muted: bool) -> Result<bool, String> {
+    modules::set_master_muted(muted)
+}
+
+#[tauri::command]
 fn radio_status() -> modules::RadioSnapshot {
     modules::radio_status()
 }
@@ -407,6 +417,8 @@ pub fn run() {
             pomodoro_status,
             system_volume,
             set_system_volume,
+            system_muted,
+            set_system_muted,
             radio_status,
             set_radio,
             clipboard_read,
