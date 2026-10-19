@@ -12,6 +12,10 @@ export const config = {
     hoverCloseMs: 250,
     animationMs: 280
   },
+  levels: {
+    mainHeight: 220,
+    extendedHeight: 340
+  },
   colors: {
     background: "#1e1e2e",
     border: "rgba(205, 214, 244, 0.12)"

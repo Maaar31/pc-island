@@ -21,6 +21,20 @@ arrondi vide :
 Le front est du TypeScript sans framework : il n'y a pas encore de contenu
 applicatif, et cette option réduit les dépendances pour valider la mécanique.
 
+## Phase 3
+
+La structure de l'interface est maintenant en place avec des données factices :
+
+- niveau principal : média, volume et luminosité ;
+- niveau étendu : onglets Notifications, Pomodoro et Presse-papier ;
+- composants visuels de base pour boutons, contrôles média, sliders, onglets et
+  cartes ;
+- retour au niveau principal via le bouton de réduction ou à la fermeture de
+  l'île.
+
+Les modules ne contactent encore aucune API Windows et restent explicitement
+indiqués comme en préparation.
+
 ## Prérequis de validation
 
 Rust MSVC, les Build Tools Visual Studio, Node 20+ et WebView2 sont requis.

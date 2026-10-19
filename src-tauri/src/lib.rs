@@ -81,7 +81,6 @@ fn set_open(app: AppHandle, state: State<WindowState>, open: bool) -> tauri::Res
     if open {
         wake.hide()?;
     } else {
-        set_native_region(&island, None)?;
         wake.show()?;
     }
     Ok(())
@@ -110,9 +109,7 @@ fn set_panel_rect(
     width: f64,
     height: f64,
 ) -> tauri::Result<()> {
-    if !*state.open.lock().unwrap() {
-        return Ok(());
-    }
+    let _ = state;
     let island = app
         .get_webview_window("island")
         .ok_or_else(|| tauri::Error::Anyhow("Island window missing".into()))?;
