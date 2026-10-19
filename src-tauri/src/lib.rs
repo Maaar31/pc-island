@@ -206,6 +206,26 @@ fn set_system_volume(value: u8) -> Result<u8, String> {
 }
 
 #[tauri::command]
+fn microphone_volume() -> Result<u8, String> {
+    modules::microphone_volume()
+}
+
+#[tauri::command]
+fn set_microphone_volume(value: u8) -> Result<u8, String> {
+    modules::set_microphone_volume(value)
+}
+
+#[tauri::command]
+fn radio_status() -> modules::RadioSnapshot {
+    modules::radio_status()
+}
+
+#[tauri::command]
+fn set_radio(kind: String, enabled: bool) -> Result<modules::RadioSnapshot, String> {
+    modules::set_radio(&kind, enabled)
+}
+
+#[tauri::command]
 fn clipboard_read() -> Result<String, String> {
     modules::read_clipboard()
 }
@@ -239,6 +259,10 @@ pub fn run() {
             pomodoro_status,
             system_volume,
             set_system_volume,
+            microphone_volume,
+            set_microphone_volume,
+            radio_status,
+            set_radio,
             clipboard_read,
             clipboard_write,
             media_status,

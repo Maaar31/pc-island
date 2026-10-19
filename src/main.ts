@@ -16,7 +16,12 @@ import {
   mediaControl,
   type MediaSnapshot,
   systemVolume,
-  setSystemVolume
+  setSystemVolume,
+  microphoneVolume,
+  setMicrophoneVolume,
+  radioStatus,
+  setRadio,
+  type RadioSnapshot
 } from "./bridge";
 import "./style.css";
 
@@ -152,7 +157,14 @@ mainView.innerHTML = `
         <div class="module-row"><label class="module-label" for="volume-slider">Volume</label><span class="module-value volume-value">—</span></div>
         <input id="volume-slider" class="system-slider" type="range" min="0" max="100" value="0" aria-label="Volume système">
       </div>
-      <div><div class="module-row"><span class="module-label">Luminosité</span><span class="module-value">—</span></div><div class="fake-slider" aria-hidden="true"></div></div>
+      <div>
+        <div class="module-row"><label class="module-label" for="microphone-slider">Microphone</label><span class="module-value microphone-value">—</span></div>
+        <input id="microphone-slider" class="system-slider" type="range" min="0" max="100" value="0" aria-label="Volume du microphone">
+      </div>
+      <div class="radio-row">
+        <button class="radio-toggle" data-radio="wifi" type="button"><span>Wi-Fi</span><b>—</b></button>
+        <button class="radio-toggle" data-radio="bluetooth" type="button"><span>Bluetooth</span><b>—</b></button>
+      </div>
     </article>
   </div>
   <footer class="panel-footer"><span>Une île discrète, toujours disponible</span><span class="footer-hint">Cliquez sur une page</span></footer>
@@ -171,6 +183,8 @@ const mediaPrevious = mainView.querySelector<HTMLButtonElement>(".media-control[
 const mediaNext = mainView.querySelector<HTMLButtonElement>(".media-control[aria-label='Suivant']");
 const volumeSlider = mainView.querySelector<HTMLInputElement>("#volume-slider");
 const volumeValue = mainView.querySelector<HTMLElement>(".volume-value");
+const microphoneSlider = mainView.querySelector<HTMLInputElement>("#microphone-slider");
+const microphoneValue = mainView.querySelector<HTMLElement>(".microphone-value");
 function renderMedia(media: MediaSnapshot) {
   if (!mediaTitle || !mediaArtist || !mediaToggle) return;
   mediaTitle.textContent = media.available ? media.title : "Aucune lecture";
@@ -223,6 +237,53 @@ if (volumeSlider && volumeValue) {
         if (value !== null) renderVolume(value);
       });
     }, 2000);
+  }
+  if (microphoneSlider && microphoneValue) {
+    const renderMicrophone = (value: number) => {
+      const normalized = Math.round(Math.max(0, Math.min(100, value)));
+      microphoneSlider.value = String(normalized);
+      microphoneValue.textContent = `${normalized} %`;
+    };
+    microphoneSlider.addEventListener("input", () => {
+      void setMicrophoneVolume(Number(microphoneSlider.value)).then((value) => {
+        if (value !== null) renderMicrophone(value);
+      });
+    });
+    if (isTauri) {
+      void microphoneVolume().then((value) => {
+        if (value !== null) renderMicrophone(value);
+      });
+      window.setInterval(() => {
+        void microphoneVolume().then((value) => {
+          if (value !== null) renderMicrophone(value);
+        });
+      }, 2000);
+    }
+  }
+  const radioButtons = mainView.querySelectorAll<HTMLButtonElement>(".radio-toggle");
+  function renderRadios(snapshot: RadioSnapshot) {
+    radioButtons.forEach((button) => {
+      const kind = button.dataset.radio as "wifi" | "bluetooth";
+      const value = snapshot[kind];
+      button.classList.toggle("on", value === true);
+      button.classList.toggle("unavailable", value === null);
+      const state = button.querySelector("b");
+      if (state) state.textContent = value === null ? "Indisponible" : value ? "Activé" : "Désactivé";
+    });
+  }
+  if (radioButtons.length > 0 && isTauri) {
+    void radioStatus().then((snapshot) => {
+      if (snapshot) renderRadios(snapshot);
+    });
+    radioButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const kind = button.dataset.radio as "wifi" | "bluetooth";
+        const current = button.classList.contains("on");
+        void setRadio(kind, !current).then((snapshot) => {
+          if (snapshot) renderRadios(snapshot);
+        });
+      });
+    });
   }
 }
 

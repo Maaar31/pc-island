@@ -48,3 +48,12 @@ et les Build Tools Visual Studio.
 Rust MSVC, les Build Tools Visual Studio, Node 20+ et WebView2 sont requis.
 Sur cette machine, Rust `1.99.1`, Node `22.18.0`, WebView2 `155.0.4283.62`
 et les Build Tools MSVC 2019 sont désormais disponibles.
+
+## Phase 4 — modules système
+
+- Média Windows : lecture/pause, précédent, suivant et état du lecteur.
+- Volume de sortie et volume du microphone via Core Audio.
+- Wi-Fi et Bluetooth via `Windows.Devices.Radios`, avec état `Indisponible`
+  si Windows ou les droits ne permettent pas l'accès.
+- Luminosité volontairement non affichée tant qu'un backend fiable pour les
+  écrans compatibles n'est pas disponible.

@@ -593,6 +593,50 @@ body,
   gap: 16px;
 }
 
+.radio-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.radio-toggle {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid rgba(205, 214, 244, 0.08);
+  border-radius: 10px;
+  color: #9399b2;
+  background: rgba(17, 17, 27, 0.5);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 140ms ease-out, border-color 140ms ease-out, transform 100ms ease-out;
+}
+
+.radio-toggle b {
+  color: #6c7086;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.radio-toggle.on {
+  border-color: rgba(137, 180, 250, 0.35);
+  color: #cdd6f4;
+  background: rgba(137, 180, 250, 0.12);
+}
+
+.radio-toggle.on b {
+  color: #89b4fa;
+}
+
+.radio-toggle.unavailable {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .module-row {
   justify-content: space-between;
   gap: 10px;
