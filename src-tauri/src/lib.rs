@@ -31,7 +31,7 @@ fn configure_window(window: &WebviewWindow, width: u32, height: u32) -> tauri::R
     place_top_center(window, width, height)?;
     window.set_always_on_top(true)?;
     window.set_focusable(false)?;
-    window.set_ignore_cursor_events(true)?;
+    window.set_ignore_cursor_events(false)?;
     Ok(())
 }
 
@@ -74,29 +74,26 @@ fn set_open(app: AppHandle, state: State<WindowState>, open: bool) -> tauri::Res
     let island = app
         .get_webview_window("island")
         .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Island window missing")))?;
-    let wake = app
-        .get_webview_window("wake")
-        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Wake window missing")))?;
     island.set_ignore_cursor_events(!open)?;
-    wake.set_ignore_cursor_events(true)?;
-    if open {
-        wake.hide()?;
-    } else {
-        wake.show()?;
-    }
     Ok(())
 }
 
 #[tauri::command]
 fn set_wake_visible(app: AppHandle, visible: bool) -> tauri::Result<()> {
-    let wake = app
-        .get_webview_window("wake")
-        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Wake window missing")))?;
+    let island = app
+        .get_webview_window("island")
+        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Island window missing")))?;
     if visible {
-        place_top_center(&wake, WAKE_WIDTH, WAKE_HEIGHT)?;
-        wake.show()?;
-    } else {
-        wake.hide()?;
+        let scale = island.scale_factor()?.max(0.1);
+        set_native_region(
+            &island,
+            Some((
+                ((PANEL_WIDTH as f64 - WAKE_WIDTH as f64) * scale / 2.0).round() as i32,
+                0,
+                (WAKE_WIDTH as f64 * scale).round() as i32,
+                (WAKE_HEIGHT as f64 * scale).round() as i32,
+            )),
+        )?;
     }
     Ok(())
 }
@@ -145,13 +142,17 @@ pub fn run() {
             let island = app
                 .get_webview_window("island")
                 .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Island window missing")))?;
-            let wake = app
-                .get_webview_window("wake")
-                .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Wake window missing")))?;
             configure_window(&island, PANEL_WIDTH, PANEL_HEIGHT)?;
-            configure_window(&wake, WAKE_WIDTH, WAKE_HEIGHT)?;
-            wake.set_ignore_cursor_events(false)?;
-            set_native_region(&island, None)?;
+            let scale = island.scale_factor()?.max(0.1);
+            set_native_region(
+                &island,
+                Some((
+                    ((PANEL_WIDTH as f64 - WAKE_WIDTH as f64) * scale / 2.0).round() as i32,
+                    0,
+                    (WAKE_WIDTH as f64 * scale).round() as i32,
+                    (WAKE_HEIGHT as f64 * scale).round() as i32,
+                )),
+            )?;
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -33,25 +33,6 @@
         "maximizable": false,
         "minimizable": false,
         "closable": false
-      },
-      {
-        "label": "wake",
-        "title": "Island wake area",
-        "url": "index.html",
-        "width": 240,
-        "height": 10,
-        "resizable": false,
-        "decorations": false,
-        "transparent": true,
-        "shadow": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "focus": false,
-        "visible": true,
-        "center": false,
-        "maximizable": false,
-        "minimizable": false,
-        "closable": false
       }
     ]
   },

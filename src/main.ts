@@ -1,8 +1,5 @@
 import { config } from "./config";
 import {
-  currentWindowLabel,
-  emitWakeEnter,
-  installWakeListener,
   isTauri,
   setOpen,
   setPanelRect,
@@ -241,32 +238,23 @@ panel.addEventListener("transitionend", () => {
   if (!open) pushPanelRect();
 });
 
+browserWake.addEventListener("pointerenter", scheduleOpen);
+browserWake.addEventListener("pointerleave", scheduleClose);
+window.addEventListener("pointermove", (event) => {
+  const zone = event.clientX >= (window.innerWidth - config.panel.collapsedWidth) / 2
+    && event.clientX <= (window.innerWidth + config.panel.collapsedWidth) / 2
+    && event.clientY >= config.panel.offsetY
+    && event.clientY <= config.panel.offsetY + config.panel.collapsedHeight;
+  const overPanel = panel.matches(":hover");
+  if (zone || overPanel) {
+    scheduleOpen();
+  } else if (!openTimer) {
+    scheduleClose();
+  }
+});
 if (isTauri) {
-  void currentWindowLabel().then((label) => {
-    if (label === "wake") {
-      window.addEventListener("mouseenter", () => void emitWakeEnter());
-      return;
-    }
-    else {
-      browserWake.addEventListener("pointerenter", scheduleOpen);
-      browserWake.addEventListener("pointerleave", scheduleClose);
-      window.addEventListener("pointermove", (event) => {
-        const zone = event.clientX >= (window.innerWidth - config.panel.collapsedWidth) / 2
-          && event.clientX <= (window.innerWidth + config.panel.collapsedWidth) / 2
-          && event.clientY >= config.panel.offsetY
-          && event.clientY <= config.panel.offsetY + config.panel.collapsedHeight;
-        const overPanel = panel.matches(":hover");
-        if (zone || overPanel) {
-          scheduleOpen();
-        } else if (!openTimer) {
-          scheduleClose();
-        }
-      });
-    }
-    void installWakeListener(scheduleOpen);
-    void setZoomForDpr(window.devicePixelRatio);
-    void setWakeVisible(true);
-  });
+  void setZoomForDpr(window.devicePixelRatio);
+  void setWakeVisible(true);
 }
 
 window.addEventListener("resize", pushPanelRect);
