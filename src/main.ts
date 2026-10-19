@@ -12,6 +12,7 @@ import {
   pomodoroStatus,
   readClipboard,
   writeClipboard,
+  clipboardHistory,
   mediaStatus,
   mediaControl,
   type MediaSnapshot,
@@ -114,6 +115,7 @@ extended.innerHTML = `
       <button class="expand-button clipboard-copy" type="button">Copier vers Windows</button>
     </div>
     <p class="clipboard-status" role="status">Le contenu actuel sera lu uniquement à votre demande.</p>
+    <div class="clipboard-history" aria-label="Historique local"></div>
   </div>
 `;
 const mainHeader = Object.assign(document.createElement("div"), {
@@ -324,6 +326,7 @@ const pomodoroToggle = extended.querySelector<HTMLButtonElement>(".pomodoro-togg
 const clipboardText = extended.querySelector<HTMLTextAreaElement>(".clipboard-text");
 const clipboardRead = extended.querySelector<HTMLButtonElement>(".clipboard-read");
 const clipboardCopy = extended.querySelector<HTMLButtonElement>(".clipboard-copy");
+const clipboardHistoryList = extended.querySelector<HTMLElement>(".clipboard-history");
 if (pomodoroStatusElement && pomodoroToggle) {
   const renderPomodoro = (status: { running: boolean; remainingSeconds: number }) => {
     const minutes = Math.floor(status.remainingSeconds / 60).toString().padStart(2, "0");
@@ -344,10 +347,30 @@ if (pomodoroStatusElement && pomodoroToggle) {
   };
 }
 if (clipboardText && clipboardCopy) {
+  const renderClipboardHistory = (items: string[]) => {
+    if (!clipboardHistoryList) return;
+    clipboardHistoryList.replaceChildren(...items.map((item) => {
+      const button = document.createElement("button");
+      button.className = "clipboard-history-item";
+      button.type = "button";
+      button.textContent = item.replace(/\s+/g, " ").slice(0, 90);
+      button.title = item;
+      button.addEventListener("click", () => {
+        clipboardText.value = item;
+      });
+      return button;
+    }));
+  };
+  void clipboardHistory().then((items) => {
+    if (items) renderClipboardHistory(items);
+  });
   clipboardCopy.addEventListener("click", () => {
     void writeClipboard(clipboardText.value).then((result) => {
       const status = extended.querySelector<HTMLElement>(".clipboard-status");
       if (status) status.textContent = result === null ? "Impossible d'écrire dans le presse-papier." : "Copié dans le presse-papier Windows.";
+      if (result !== null) void clipboardHistory().then((items) => {
+        if (items) renderClipboardHistory(items);
+      });
     });
   });
   clipboardRead?.addEventListener("click", () => {

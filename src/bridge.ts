@@ -53,6 +53,18 @@ export function writeClipboard(text: string) {
   return call<void>("clipboard_write", { text });
 }
 
+export function clipboardHistory() {
+  return call<string[]>("clipboard_history");
+}
+
+export function autostartStatus() {
+  return call<boolean>("autostart_status");
+}
+
+export function setAutostart(enabled: boolean) {
+  return call<boolean>("set_autostart_command", { enabled });
+}
+
 export function systemVolume() {
   return call<number>("system_volume");
 }

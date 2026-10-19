@@ -65,9 +65,16 @@ et les Build Tools MSVC 2019 sont désormais disponibles.
 
 - Les rafraîchissements média, volume et Pomodoro sont démarrés à l'ouverture
   de l'île et arrêtés à sa fermeture.
+- L'île ne se déclenche pas lorsqu'une fenêtre au premier plan occupe
+  entièrement le moniteur, afin de ne pas recouvrir un jeu ou une vidéo plein
+  écran.
 - Une icône de zone de notification fournit maintenant un menu `Quitter
   Island`, indispensable puisque la fenêtre n'a volontairement pas de bouton
   système.
+- Le menu de zone de notification permet d'activer ou désactiver l'autostart
+  Windows pour l'utilisateur courant.
+- Un historique local de 20 textes est capturé côté Rust et consultable depuis
+  la page Presse-papier ; il ne lit toujours pas l'historique système Win+V.
 - Le bundle NSIS est activé en installation pour l'utilisateur courant.
   Test validé avec `npm run tauri build -- --debug`.
 
@@ -77,6 +84,4 @@ et les Build Tools MSVC 2019 sont désormais disponibles.
 - Les notifications Windows restent reportées : l'accès à l'historique est
   restreint pour une application Tauri non packagée.
 - Le presse-papier actuel est volontairement limité au texte courant ; il ne
-  reproduit pas l'historique Win+V.
-- La détection des applications plein écran et l'autostart Windows restent
-  à ajouter.
+  reproduit pas l'historique Win+V et ne conserve pas les images ou fichiers.

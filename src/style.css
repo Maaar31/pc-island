@@ -648,6 +648,29 @@ body,
   font-size: 11px;
 }
 
+.clipboard-history {
+  display: grid;
+  max-height: 94px;
+  gap: 5px;
+  margin-top: 10px;
+  overflow: auto;
+}
+
+.clipboard-history-item {
+  overflow: hidden;
+  padding: 7px 9px;
+  border: 1px solid rgba(205, 214, 244, 0.08);
+  border-radius: 8px;
+  color: #bac2de;
+  background: rgba(17, 17, 27, 0.5);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .module-row {
   justify-content: space-between;
   gap: 10px;

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem},
     tray::TrayIconBuilder,
     AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow,
 };
@@ -96,7 +96,36 @@ fn set_native_region(_window: &WebviewWindow, _rect: Option<(i32, i32, i32, i32)
 #[cfg(windows)]
 fn start_wake_poller(app: AppHandle) {
     use windows::Win32::Foundation::POINT;
-    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetCursorPos, GetForegroundWindow, GetWindowRect,
+    };
+
+    fn foreground_is_fullscreen() -> bool {
+        unsafe {
+            let foreground = GetForegroundWindow();
+            if foreground.is_invalid() {
+                return false;
+            }
+            let monitor = MonitorFromWindow(foreground, MONITOR_DEFAULTTONEAREST);
+            if monitor.is_invalid() {
+                return false;
+            }
+            let mut monitor_info = MONITORINFO {
+                cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+                ..Default::default()
+            };
+            let mut window_rect = windows::Win32::Foundation::RECT::default();
+            if GetMonitorInfoW(monitor, &mut monitor_info).as_bool()
+                && GetWindowRect(foreground, &mut window_rect).is_ok()
+            {
+                return window_rect == monitor_info.rcMonitor;
+            }
+            false
+        }
+    }
 
     std::thread::spawn(move || {
         let mut was_inside = false;
@@ -105,6 +134,9 @@ fn start_wake_poller(app: AppHandle) {
                 break;
             };
             let inside = (|| -> tauri::Result<bool> {
+                if foreground_is_fullscreen() {
+                    return Ok(false);
+                }
                 let position = window.outer_position()?;
                 let size = window.outer_size()?;
                 let scale = window.scale_factor()?.max(0.1);
@@ -241,8 +273,113 @@ fn clipboard_read() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn clipboard_write(text: String) -> Result<(), String> {
-    modules::write_clipboard(&text)
+fn clipboard_write(state: State<modules::ClipboardHistoryState>, text: String) -> Result<(), String> {
+    modules::write_clipboard(&text)?;
+    modules::remember_clipboard(&state, text);
+    Ok(())
+}
+
+#[tauri::command]
+fn clipboard_history(state: State<modules::ClipboardHistoryState>) -> Vec<String> {
+    modules::clipboard_history(&state)
+}
+
+#[cfg(windows)]
+fn autostart_enabled() -> Result<bool, String> {
+    use windows::core::w;
+    use windows::Win32::System::Registry::{
+        RegOpenKeyExW, HKEY_CURRENT_USER, KEY_QUERY_VALUE,
+    };
+    let mut key = HKEY_CURRENT_USER;
+    let result = unsafe {
+        RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run"),
+            Some(0),
+            KEY_QUERY_VALUE,
+            &mut key,
+        )
+    };
+    if result.is_err() {
+        return Ok(false);
+    }
+    let mut size = 0u32;
+    let result = unsafe {
+        windows::Win32::System::Registry::RegGetValueW(
+            key,
+            None,
+            w!("Island"),
+            windows::Win32::System::Registry::RRF_RT_REG_SZ,
+            None,
+            None,
+            Some(&mut size),
+        )
+    };
+    unsafe { let _ = windows::Win32::System::Registry::RegCloseKey(key); };
+    Ok(result.is_ok() && size > 0)
+}
+
+#[cfg(not(windows))]
+fn autostart_enabled() -> Result<bool, String> {
+    Ok(false)
+}
+
+#[cfg(windows)]
+fn set_autostart(enabled: bool) -> Result<bool, String> {
+    use windows::core::w;
+    use windows::Win32::System::Registry::{
+        RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegSetValueExW, HKEY_CURRENT_USER,
+        KEY_SET_VALUE, REG_OPTION_NON_VOLATILE, REG_SZ,
+    };
+    let mut key = HKEY_CURRENT_USER;
+    let status = unsafe {
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run"),
+            None,
+            None,
+            REG_OPTION_NON_VOLATILE,
+            KEY_SET_VALUE,
+            None,
+            &mut key,
+            None,
+        )
+    };
+    if status.is_err() {
+        return Err(format!("Erreur registre Windows: {:?}", status));
+    }
+    let result = if enabled {
+        let path = std::env::current_exe().map_err(|error| error.to_string())?;
+        let value = format!("\"{}\"", path.display());
+        let mut data = value.encode_utf16().collect::<Vec<_>>();
+        data.push(0);
+        let bytes = unsafe {
+            std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 2)
+        };
+        unsafe { RegSetValueExW(key, w!("Island"), None, REG_SZ, Some(bytes)) }
+    } else {
+        unsafe { RegDeleteValueW(key, w!("Island")) }
+    };
+    unsafe { let _ = RegCloseKey(key); };
+    if result.is_err() {
+        return Err(format!("Erreur registre Windows: {:?}", result));
+    }
+    Ok(enabled)
+}
+
+#[cfg(not(windows))]
+fn set_autostart(_enabled: bool) -> Result<bool, String> {
+    Err("L'autostart est disponible uniquement sous Windows".into())
+}
+
+#[tauri::command]
+fn autostart_status() -> Result<bool, String> {
+    autostart_enabled()
+}
+
+#[tauri::command]
+fn set_autostart_command(enabled: bool) -> Result<bool, String> {
+    set_autostart(enabled)
 }
 
 #[tauri::command]
@@ -259,6 +396,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(WindowState::default())
         .manage(modules::ModuleState::default())
+        .manage(modules::ClipboardHistoryState::default())
         .invoke_handler(tauri::generate_handler![
             set_open,
             set_wake_visible,
@@ -273,6 +411,9 @@ pub fn run() {
             set_radio,
             clipboard_read,
             clipboard_write,
+            clipboard_history,
+            autostart_status,
+            set_autostart_command,
             media_status,
             media_control
         ])
@@ -295,17 +436,33 @@ pub fn run() {
             start_wake_poller(app.handle().clone());
 
             let quit = MenuItem::with_id(app, "quit", "Quitter Island", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&quit])?;
+            let autostart = CheckMenuItem::with_id(
+                app,
+                "autostart",
+                "Lancer au démarrage de Windows",
+                true,
+                autostart_enabled().unwrap_or(false),
+                None::<&str>,
+            )?;
+            let menu = Menu::with_items(app, &[&autostart, &quit])?;
+            let autostart_for_handler = autostart.clone();
             TrayIconBuilder::with_id("island-tray")
                 .icon(tray_icon())
                 .tooltip("Island")
                 .menu(&menu)
-                .on_menu_event(|app, event| {
+                .on_menu_event(move |app, event| {
                     if event.id() == "quit" {
                         app.exit(0);
+                    } else if event.id() == "autostart" {
+                        let current = autostart_enabled().unwrap_or(false);
+                        if let Ok(enabled) = set_autostart(!current) {
+                            let _ = autostart_for_handler.set_checked(enabled);
+                        }
                     }
                 })
                 .build(app)?;
+            let history = app.state::<modules::ClipboardHistoryState>().history.clone();
+            modules::start_clipboard_watcher(history);
             Ok(())
         })
         .run(tauri::generate_context!())

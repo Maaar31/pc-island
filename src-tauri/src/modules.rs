@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
@@ -6,6 +6,11 @@ use serde::Serialize;
 #[derive(Default)]
 pub struct ModuleState {
     pub pomodoro: Mutex<Pomodoro>,
+}
+
+#[derive(Default)]
+pub struct ClipboardHistoryState {
+    pub history: Arc<Mutex<Vec<String>>>,
 }
 
 #[derive(Clone, Serialize)]
@@ -221,6 +226,40 @@ pub fn read_clipboard() -> Result<String, String> {
 pub fn write_clipboard(text: &str) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|error| error.to_string())?;
     clipboard.set_text(text).map_err(|error| error.to_string())
+}
+
+pub fn remember_clipboard(state: &ClipboardHistoryState, text: String) {
+    if text.is_empty() {
+        return;
+    }
+    let mut history = state.history.lock().unwrap();
+    history.retain(|item| item != &text);
+    history.insert(0, text);
+    history.truncate(20);
+}
+
+pub fn clipboard_history(state: &ClipboardHistoryState) -> Vec<String> {
+    state.history.lock().unwrap().clone()
+}
+
+pub fn start_clipboard_watcher(history: Arc<Mutex<Vec<String>>>) {
+    std::thread::spawn(move || {
+        let mut last = String::new();
+        loop {
+            if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                if let Ok(text) = clipboard.get_text() {
+                    if !text.is_empty() && text != last {
+                        last = text.clone();
+                        let mut items = history.lock().unwrap();
+                        items.retain(|item| item != &text);
+                        items.insert(0, text);
+                        items.truncate(20);
+                    }
+                }
+            }
+            std::thread::sleep(Duration::from_millis(500));
+        }
+    });
 }
 
 #[cfg(windows)]
