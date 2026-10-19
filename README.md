@@ -46,5 +46,5 @@ et les Build Tools Visual Studio.
 ## Prérequis de validation
 
 Rust MSVC, les Build Tools Visual Studio, Node 20+ et WebView2 sont requis.
-Sur la machine auditée, Node et WebView2 sont présents mais Rust et MSVC
-manquent encore.
+Sur cette machine, Rust `1.99.1`, Node `22.18.0`, WebView2 `155.0.4283.62`
+et les Build Tools MSVC 2019 sont désormais disponibles.

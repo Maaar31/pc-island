@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 
+use anyhow::anyhow;
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow};
 
 const PANEL_WIDTH: u32 = 520;
@@ -16,7 +17,7 @@ fn place_top_center(window: &WebviewWindow, width: u32, height: u32) -> tauri::R
     let monitor = window
         .current_monitor()?
         .or(window.primary_monitor()?)
-        .ok_or_else(|| tauri::Error::Anyhow("No monitor available".into()))?;
+        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("No monitor available")))?;
     let position = monitor.position();
     let size = monitor.size();
     let x = position.x + (size.width as i32 - width as i32) / 2;
@@ -36,12 +37,12 @@ fn configure_window(window: &WebviewWindow, width: u32, height: u32) -> tauri::R
 
 #[cfg(windows)]
 fn set_native_region(window: &WebviewWindow, rect: Option<(i32, i32, i32, i32)>) -> tauri::Result<()> {
-    use windows::Win32::Foundation::{BOOL, HWND};
+    use windows::Win32::Foundation::HWND;
     use windows::Win32::Graphics::Gdi::{CreateRectRgn, DeleteObject, SetWindowRgn};
 
     let hwnd = window
         .hwnd()
-        .map_err(|error| tauri::Error::Anyhow(error.to_string().into()))?;
+        ?;
     let hwnd = HWND(hwnd.0 as _);
     let region = match rect {
         Some((x, y, width, height)) if width > 0 && height > 0 => unsafe {
@@ -50,14 +51,14 @@ fn set_native_region(window: &WebviewWindow, rect: Option<(i32, i32, i32, i32)>)
         _ => unsafe { CreateRectRgn(0, 0, 0, 0) },
     };
     if region.is_invalid() {
-        return Err(tauri::Error::Anyhow("CreateRectRgn failed".into()));
+        return Err(tauri::Error::Anyhow(anyhow!("CreateRectRgn failed")));
     }
-    let result = unsafe { SetWindowRgn(hwnd, region, BOOL(1)) };
+    let result = unsafe { SetWindowRgn(hwnd, Some(region), true) };
     if result == 0 {
         unsafe {
             let _ = DeleteObject(region.into());
         }
-        return Err(tauri::Error::Anyhow("SetWindowRgn failed".into()));
+        return Err(tauri::Error::Anyhow(anyhow!("SetWindowRgn failed")));
     }
     Ok(())
 }
@@ -72,10 +73,10 @@ fn set_open(app: AppHandle, state: State<WindowState>, open: bool) -> tauri::Res
     *state.open.lock().unwrap() = open;
     let island = app
         .get_webview_window("island")
-        .ok_or_else(|| tauri::Error::Anyhow("Island window missing".into()))?;
+        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Island window missing")))?;
     let wake = app
         .get_webview_window("wake")
-        .ok_or_else(|| tauri::Error::Anyhow("Wake window missing".into()))?;
+        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Wake window missing")))?;
     island.set_ignore_cursor_events(!open)?;
     wake.set_ignore_cursor_events(true)?;
     if open {
@@ -90,7 +91,7 @@ fn set_open(app: AppHandle, state: State<WindowState>, open: bool) -> tauri::Res
 fn set_wake_visible(app: AppHandle, visible: bool) -> tauri::Result<()> {
     let wake = app
         .get_webview_window("wake")
-        .ok_or_else(|| tauri::Error::Anyhow("Wake window missing".into()))?;
+        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Wake window missing")))?;
     if visible {
         place_top_center(&wake, WAKE_WIDTH, WAKE_HEIGHT)?;
         wake.show()?;
@@ -112,7 +113,7 @@ fn set_panel_rect(
     let _ = state;
     let island = app
         .get_webview_window("island")
-        .ok_or_else(|| tauri::Error::Anyhow("Island window missing".into()))?;
+        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Island window missing")))?;
     let scale = island.scale_factor()?.max(0.1);
     let rect = (
         (x * scale).round() as i32,
@@ -127,7 +128,7 @@ fn set_panel_rect(
 fn fit_zoom(app: AppHandle, dpr: f64) -> tauri::Result<bool> {
     let island = app
         .get_webview_window("island")
-        .ok_or_else(|| tauri::Error::Anyhow("Island window missing".into()))?;
+        .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Island window missing")))?;
     let scale = island.scale_factor()?.max(0.1);
     if !dpr.is_finite() || dpr <= 0.0 || (dpr - scale).abs() / scale < 0.02 {
         return Ok(false);
@@ -143,10 +144,10 @@ pub fn run() {
         .setup(|app| {
             let island = app
                 .get_webview_window("island")
-                .ok_or_else(|| tauri::Error::Anyhow("Island window missing".into()))?;
+                .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Island window missing")))?;
             let wake = app
                 .get_webview_window("wake")
-                .ok_or_else(|| tauri::Error::Anyhow("Wake window missing".into()))?;
+                .ok_or_else(|| tauri::Error::Anyhow(anyhow!("Wake window missing")))?;
             configure_window(&island, PANEL_WIDTH, PANEL_HEIGHT)?;
             configure_window(&wake, WAKE_WIDTH, WAKE_HEIGHT)?;
             wake.set_ignore_cursor_events(false)?;
